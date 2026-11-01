@@ -14,17 +14,29 @@ n8n is a powerful automation framework but faces key challenges:
 - **Inadequate APIs**, e.g. Facebook's API reads only Pages you manage.
 - **Hard to set up credentials**, e.g. Google requires you to make an OAuth app first.
 
-Reduck solves this by making it easy to write browser automation scripts with Agents, thanks to Reduck MCP, and then run them within n8n.
+Reduck solves this by making it easy to automate sites with no API by writing browser automation scripts with Agents and running them with a n8n node.
 
-A script runs in your own browser (the Reduck extension), where you are signed in, or in a
-Reduck managed browser. For example, workflows with Reduck can:
+With Reduck you can:
 
-- Find LinkedIn profiles and send connection requests.
+- Find LinkedIn profiles, qualify them and send connection requests.
 - Read and post in Facebook groups.
 - Search Reddit and read every comment of a thread.
+- ... or create your own workflow on top of any site without API!
 
 You can run scripts from the [Reduck library](https://reduck.ai/explore), or from ones you create yourself for custom integrations (see
-[Building your own script](#building-your-own-script-and-using-it)).
+[Building your own script](#building-your-own-script-and-using-it)) using Reduck MCP.
+
+A script runs in a browser. You choose which one in the node's **Browser** field:
+
+- **Your paired browser**: your own Chrome, with the Reduck extension. The script uses your
+  sessions, so it is signed in where you are. Chrome must be open.
+- **A Reduck managed browser**: a browser in the Reduck cloud. It runs 24/7 without your
+  computer.
+
+> [!NOTE]
+> A managed browser does not store any credentials and starts fresh, so it can only read public pages. We will provide cookie storage and reuse soon to allow to run scripts with managed browsers.
+
+To choose between the two, see the [FAQ](#faq).
 
 ## Requirements
 
@@ -131,9 +143,18 @@ Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/
 ## FAQ
 
 <details>
-<summary>Do I need an API key or an OAuth app for LinkedIn, Facebook or Reddit?</summary>
+<summary>Paired browser or managed browser?</summary>
 
-No. A script uses the site in a browser where you are already signed in.
+|              | Paired browser                  | Managed browser                                |
+| ------------ | ------------------------------- | ---------------------------------------------- |
+| Volume       | Under ~100 script runs per hour | Deployment at scale                            |
+| Cost         | Cheaper                         | More expensive                                 |
+| Credentials  | Never leave your browser        | None: public pages only                        |
+| Availability | Needs your browser open         | 24/7                                           |
+| Network      | Your connection                 | Datacenter, or a home address per **Country**  |
+
+If a site refuses the managed browser, set **Country**: the browser then connects from a home
+address in that country, not from a datacenter.
 
 </details>
 
@@ -155,17 +176,6 @@ run's steps and screenshots. To continue, open the node's **Settings** and set *
   and `details` links to the run.
 - **Continue (using error output)**: the same item goes to a second output, so you can send
   failures to another branch, for example to alert you.
-
-</details>
-
-<details>
-<summary>Paired browser or managed browser?</summary>
-
-- **Paired browser** (the Reduck extension): for a site where you must be signed in. Chrome must
-  be open on your computer.
-- **Reduck managed browser**: for a site with no sign-in. Nothing runs on your computer. If the
-  site refuses the run because it comes from a datacenter, set **Country** to connect from a home
-  address in that country.
 
 </details>
 
