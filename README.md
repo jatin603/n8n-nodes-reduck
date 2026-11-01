@@ -120,6 +120,13 @@ Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/
 - [Google AI Overview, on a webhook](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/google-ai-overview-webhook.json):
   answers `GET /webhook/ai-overview?q=<search>` with the AI Overview Google shows for that search,
   as JSON. The CLI [quick start](#quick-start) uses it.
+- [Reddit replies, with a review page](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/reddit-engage.json):
+  every day, reads the new threads in your subreddits, keeps the threads where the author has
+  the problem you solve, and drafts one reply for each person with Google Gemini. You read each
+  draft next to its thread at `<your n8n>/form/reddit-review`, then approve, edit, reject or skip
+  it. An approved reply goes on Reddit from your paired browser. Before you activate it, fill in
+  its **Config** node and select a Google Gemini credential in its **Pre-screen** and **Decide and
+  draft** nodes.
 
 ## FAQ
 
