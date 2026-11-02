@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Does ChatGPT cite your brand?\n\n### How it works\nFor marketing teams: every morning, this workflow asks ChatGPT the questions your buyers ask, in the ChatGPT web app with its web search, as a signed-out buyer sees it. Each answer gets a verdict:\n\n- **cited**: the answer links a page of your domain\n- **named**: it names your brand, with no link to your domain\n- **absent**: it searched, and did not cite or name you\n- **no search**: it answered from memory\n- **failed**: the run did not get an answer\n\nEach question writes one row a day to the data table `chatgpt_visibility`. `cited_domains` shows the sites that ChatGPT cited instead of yours. A question that has a verdict today is not asked again.\n\nEach question is one Reduck run a day on a Reduck managed browser, which you pay for. ChatGPT refuses many questions from a datacenter, so the browser connects from a home address in `country`. One answer is noisy: read the trend. To retry a failed question, execute the workflow again on the same day.\n\n### Setup\n1. Use self-hosted n8n. Install the community node `@reduck-ai/n8n-nodes-reduck` (version 0.2.12, n8n 2.45.5): https://docs.reduck.ai/n8n/#quick-start\n2. Create a Reduck account. In **Ask ChatGPT**, select **Connect to Reduck**.\n3. In **Config**, set:\n   - `brand_names`: the names an answer can use, with commas between them. Example: `Acme, Acme CRM`\n   - `domain`: your domain. Subdomains count. Example: `acme.com`\n   - `questions`: one question on each line. Example: `What is the best CRM for a small team?`\n   - `country`: the country the questions come from. Example: `US`\n4. Click **Execute workflow**. This is not a test: each question uses one Reduck run.",
-        "height": 760,
+        "content": "## Does ChatGPT cite your brand?\n\n### How it works\nFor marketing teams: every morning, this workflow asks ChatGPT the questions your buyers ask, in your own signed-in Chrome. It records the searches ChatGPT typed and gives each answer a verdict:\n\n- **cited**: the answer links a page of your domain\n- **named**: it names your brand, with no link to your domain\n- **in results**: a search returned your page, and the answer did not use it\n- **not in results**: no search returned your page. Write or change a page for the text in `searches`\n- **no search**: it answered without a search\n- **failed**: the run did not get an answer\n\nEach question writes one row a day to the data table `chatgpt_brand_visibility`. `cited_domains` shows the sites that ChatGPT cited instead of yours. A question that has a verdict today is not asked again.\n\nThe workflow stops when ChatGPT memory is on: past chats change the answers. One answer is noisy: read the trend. To retry a failed question, execute the workflow again the same day.\n\n### Setup\n1. Use self-hosted n8n. Install the community node `@reduck-ai/n8n-nodes-reduck` (version 0.2.14, n8n 2.45.5): https://docs.reduck.ai/n8n/#quick-start\n2. Create a Reduck account. In **Check ChatGPT memory**, select **Connect to Reduck**.\n3. Install the Reduck extension. In that Chrome, sign in to chatgpt.com and turn memory off (Settings > Personalization). Keep Chrome open at 9.\n4. In **Config**, set:\n   - `brand_names`: the names an answer can use, with commas between them. Example: `Acme, Acme CRM`\n   - `domain`: your domain. Subdomains count. Example: `acme.com`\n   - `questions`: one question on each line. Example: `What is the best CRM for a small team?`\n5. Click **Execute workflow**. This is not a test: each question uses one Reduck run and one chat in your ChatGPT account.",
+        "height": 860,
         "width": 560
       },
       "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0001",
@@ -13,7 +13,7 @@
       "typeVersion": 1,
       "position": [
         -660,
-        -400
+        -500
       ]
     },
     {
@@ -50,6 +50,22 @@
     },
     {
       "parameters": {
+        "content": "## Check the ChatGPT account\nThe run stops here when Chrome is closed, when ChatGPT is signed out, or when its memory is on.",
+        "height": 380,
+        "width": 460,
+        "color": 7
+      },
+      "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0015",
+      "name": "Section: check the ChatGPT account",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "content": "## Ask ChatGPT and save the verdict\nOne Reduck run for each question. Each answer gets a verdict and one row in the table.",
         "height": 380,
         "width": 680,
@@ -60,7 +76,7 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1360,
+        1840,
         -200
       ]
     },
@@ -115,12 +131,6 @@
               "name": "questions",
               "value": "<A question your buyers ask>\n<Another question your buyers ask>",
               "type": "string"
-            },
-            {
-              "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0104",
-              "name": "country",
-              "value": "US",
-              "type": "string"
             }
           ]
         },
@@ -137,7 +147,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const config = $('Config').first().json;\nconst list = (text, separator) =>\n  String(text ?? '').split(separator).map((s) => s.trim()).filter(Boolean);\nconst isPlaceholder = (value) => /[<>]/.test(value);\n\nconst names = list(config.brand_names, ',');\nconst questions = list(config.questions, '\\n');\nconst domain = String(config.domain ?? '')\n  .trim()\n  .toLowerCase()\n  .replace(/^https?:\\/\\//, '')\n  .replace(/^www\\./, '')\n  .replace(/\\/.*$/, '');\nconst country = String(config.country ?? '').trim().toUpperCase();\n\nif (!names.length || names.some(isPlaceholder))\n  throw new Error('Config: set brand_names to the names of your brand, with commas between them. Example: Acme, Acme CRM.');\nif (!/^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(domain))\n  throw new Error('Config: set domain to the domain of your site. Example: acme.com.');\nif (!questions.length || questions.some(isPlaceholder))\n  throw new Error('Config: set questions to the questions your buyers ask, one question on each line.');\nif (!/^[A-Z]{2}$/.test(country))\n  throw new Error('Config: set country to a two-letter country code. Example: US.');\n\nreturn [{ json: { names, domain, questions, country } }];"
+        "jsCode": "const config = $('Config').first().json;\nconst list = (text, separator) =>\n  String(text ?? '').split(separator).map((s) => s.trim()).filter(Boolean);\nconst isPlaceholder = (value) => /[<>]/.test(value);\n\nconst names = list(config.brand_names, ',');\nconst questions = list(config.questions, '\\n');\nconst domain = String(config.domain ?? '')\n  .trim()\n  .toLowerCase()\n  .replace(/^https?:\\/\\//, '')\n  .replace(/^www\\./, '')\n  .replace(/\\/.*$/, '');\n\nif (!names.length || names.some(isPlaceholder))\n  throw new Error('Config: set brand_names to the names of your brand, with commas between them. Example: Acme, Acme CRM.');\nif (!/^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(domain))\n  throw new Error('Config: set domain to the domain of your site. Example: acme.com.');\nif (!questions.length || questions.some(isPlaceholder))\n  throw new Error('Config: set questions to the questions your buyers ask, one question on each line.');\n\nreturn [{ json: { names, domain, questions } }];"
       },
       "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0008",
       "name": "Check the Config",
@@ -152,7 +162,7 @@
       "parameters": {
         "resource": "table",
         "operation": "create",
-        "tableName": "chatgpt_visibility",
+        "tableName": "chatgpt_brand_visibility",
         "columns": {
           "column": [
             {
@@ -165,6 +175,10 @@
             },
             {
               "name": "verdict",
+              "type": "string"
+            },
+            {
+              "name": "searches",
               "type": "string"
             },
             {
@@ -200,7 +214,7 @@
         "dataTableId": {
           "__rl": true,
           "mode": "name",
-          "value": "chatgpt_visibility"
+          "value": "chatgpt_brand_visibility"
         },
         "filters": {
           "conditions": [
@@ -241,6 +255,48 @@
         "script": {
           "__rl": true,
           "mode": "address",
+          "value": "reduck/chatgpt.com/get_memory"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0016",
+      "name": "Check ChatGPT memory",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1.2,
+      "position": [
+        1420,
+        0
+      ],
+      "credentials": {},
+      "executeOnce": true,
+      "notes": "Your paired Chrome: this reads the ChatGPT account the questions use. One run, whatever the number of questions.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "if ($input.first().json.result?.enabled !== false)\n  throw new Error('ChatGPT memory is on: past chats change the answers. Turn it off in ChatGPT, Settings > Personalization, then execute the workflow again.');\nreturn $('List the questions to ask').all().map((item) => ({ json: item.json }));"
+      },
+      "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0017",
+      "name": "Stop if memory is on",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "script": {
+          "__rl": true,
+          "mode": "address",
           "value": "reduck/chatgpt.com/ask"
         },
         "args": {
@@ -261,9 +317,7 @@
             }
           ]
         },
-        "deviceId": "",
-        "region": "us-east-1",
-        "country": "={{ $('Check the Config').first().json.country }}",
+        "deviceId": "extension",
         "simplify": true
       },
       "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0012",
@@ -271,25 +325,25 @@
       "type": "@reduck-ai/n8n-nodes-reduck.reduck",
       "typeVersion": 1.2,
       "position": [
-        1420,
+        1900,
         0
       ],
       "credentials": {},
       "onError": "continueRegularOutput",
-      "notes": "Reduck managed browser, from a home address in the Config country: ChatGPT refuses many questions from a datacenter.",
+      "notes": "Your paired Chrome: only a signed-in ChatGPT shows its searches and their results.",
       "notesInFlow": true
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const { question, names, domain } = $('List the questions to ask').item.json;\nconst answer = $json.result?.answer ?? '';\nconst references = $json.result?.references ?? [];\n// The progress lines ChatGPT showed (\"Searching the web\"): none means it answered from memory.\nconst searched = ($json.result?.activity ?? []).length > 0 || references.length > 0;\n\n// The Code sandbox has no URL global, so the host is read with a pattern.\nconst hostOf = (url) => /^https?:\\/\\/(?:www\\.)?([^/?#:]+)/i.exec(url ?? '')?.[1]?.toLowerCase();\n// Anchored on a dot, so notacme.com is not acme.com.\nconst ours = (host) => host === domain || host.endsWith(`.${domain}`);\nconst cited = [...new Set(references.map((r) => hostOf(r.url)).filter(Boolean))];\nconst named = names.some((n) => answer.toLowerCase().includes(n.toLowerCase()));\n\nconst verdict = $json.error\n  ? 'failed'\n  : cited.some(ours)\n    ? 'cited'\n    : named\n      ? 'named'\n      : searched\n        ? 'absent'\n        : 'no search';\n\nreturn {\n  json: {\n    date: $now.toISODate(),\n    question,\n    verdict,\n    cited_domains: cited.filter((h) => !ours(h)).join(', '),\n    answer: $json.error ? [$json.error, $json.details].filter(Boolean).join('\\n') : answer,\n    run: $json.url ?? '',\n  },\n};"
+        "jsCode": "const { question, names, domain } = $('Stop if memory is on').all()[$itemIndex].json;\nconst result = $json.result;\nconst answer = result?.answer ?? '';\n// Null when ChatGPT is signed out: its searches are then unknown, so the run measured nothing.\nconst queries = result?.webSearchQueries;\nconst returned = (result?.searches ?? []).flatMap((round) => round.results).map((r) => r.url);\n\n// The Code sandbox has no URL global, so the host is read with a pattern.\nconst hostOf = (url) => /^https?:\\/\\/(?:www\\.)?([^/?#:]+)/i.exec(url ?? '')?.[1]?.toLowerCase();\n// Anchored on a dot, so notacme.com is not acme.com.\nconst ours = (host) => !!host && (host === domain || host.endsWith(`.${domain}`));\nconst cited = [...new Set((result?.references ?? []).map((r) => hostOf(r.url)).filter(Boolean))];\nconst named = names.some((n) => answer.toLowerCase().includes(n.toLowerCase()));\n\nconst signedOut = !$json.error && !Array.isArray(queries);\nconst verdict = $json.error || signedOut\n  ? 'failed'\n  : cited.some(ours)\n    ? 'cited'\n    : named\n      ? 'named'\n      : returned.some((url) => ours(hostOf(url)))\n        ? 'in results'\n        : queries.length || returned.length\n          ? 'not in results'\n          : 'no search';\n\nreturn {\n  json: {\n    date: $now.toISODate(),\n    question,\n    verdict,\n    searches: (queries ?? []).join('\\n'),\n    cited_domains: cited.filter((h) => !ours(h)).join(', '),\n    answer: signedOut\n      ? 'ChatGPT is signed out in your paired Chrome: sign in to chatgpt.com.'\n      : $json.error\n        ? [$json.error, $json.details].filter(Boolean).join('\\n')\n        : answer,\n    run: $json.url ?? '',\n  },\n};"
       },
       "id": "c7a1d2e0-4b6f-4e8a-9c3d-5f2b8e1a0013",
       "name": "Give the verdict",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1640,
+        2120,
         0
       ]
     },
@@ -299,7 +353,7 @@
         "dataTableId": {
           "__rl": true,
           "mode": "name",
-          "value": "chatgpt_visibility"
+          "value": "chatgpt_brand_visibility"
         },
         "columns": {
           "mappingMode": "autoMapInputData",
@@ -312,7 +366,7 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        1860,
+        2340,
         0
       ]
     }
@@ -385,6 +439,28 @@
       ]
     },
     "List the questions to ask": {
+      "main": [
+        [
+          {
+            "node": "Check ChatGPT memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check ChatGPT memory": {
+      "main": [
+        [
+          {
+            "node": "Stop if memory is on",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stop if memory is on": {
       "main": [
         [
           {
