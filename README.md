@@ -127,9 +127,6 @@ To choose between the two, see the [FAQ](#faq).
 Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/tree/main/examples)
 (**Workflows > Import from File**), then select your Reduck credential in its Reduck node.
 
-- [Doctolib booking](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/doctolib-book-appointment.json):
-  check your doctors' free slots every hour, then book the earliest one in your dates and email
-  you.
 - [ChatGPT brand monitoring](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/chatgpt-brand-visibility.json):
   ask ChatGPT your buyers' questions daily, then record if each answer cites your site, names
   you, or cites other sites.
@@ -138,6 +135,9 @@ Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/
 - [Reddit monitoring](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/reddit-engage.json):
   scan specific subreddits daily, then analyze each thread and draft an answer with AI. You can
   approve, edit or reject each draft.
+- [Doctolib booking](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/doctolib-book-appointment.json):
+check your doctors' free slots every hour, then book the earliest one in your dates and email
+you.
 
 ## FAQ
 
