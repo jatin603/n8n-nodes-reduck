@@ -33,28 +33,12 @@ export class ReduckApi implements ICredentialType {
 			default: 'https://reduck.ai',
 			description: 'Change it only to test against another Reduck environment',
 		},
-		{
-			displayName: 'Deployment Protection Bypass',
-			name: 'bypassToken',
-			type: 'string',
-			typeOptions: { password: true },
-			default: '',
-			description: 'Only for a Reduck test environment behind deployment protection. Leave it empty.',
-		},
 	];
 
-	// A function rather than a generic header map: the bypass header goes out only when it is set,
-	// never as an empty value to production.
-	authenticate: IAuthenticate = async (credentials, requestOptions) => ({
-		...requestOptions,
-		headers: {
-			...requestOptions.headers,
-			'X-API-Key': credentials.apiKey as string,
-			...(credentials.bypassToken
-				? { 'x-vercel-protection-bypass': credentials.bypassToken as string }
-				: {}),
-		},
-	});
+	authenticate: IAuthenticate = {
+		type: 'generic',
+		properties: { headers: { 'X-API-Key': '={{$credentials.apiKey}}' } },
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
