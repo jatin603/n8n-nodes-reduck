@@ -73,5 +73,9 @@ export interface Run {
 	result: { result: unknown } | { error: string } | null;
 	started_at: string;
 	finished_at: string | null;
+	/** What the user can do about a failure, when Reduck knows. */
+	external_message: string | null;
+	/** Null when the script was deleted. */
+	script: { handle: string; host: string; slug: string } | null;
 	[key: string]: unknown;
 }

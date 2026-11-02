@@ -121,6 +121,23 @@ To choose between the two, see the [FAQ](#faq).
 
 <!-- /tabs -->
 
+## Node reference
+
+The node has one operation, **Run script**: it runs a script and waits until the run ends.
+
+- **Script**: the script to run. Select it from the list, or type its address
+  (`handle/host/slug`, for example `reduck/google.com/get_ai_overview`).
+- **Arguments**: one field for each input of the script. A file input names the binary property
+  of the input item that holds the file.
+- **Browser**: your paired browser (the default), one of your paired browsers by name, or a
+  Reduck managed browser.
+- **Region** and **Country**: for a managed browser only. **Region** is its datacenter.
+  **Country** makes it connect from a home address in that country.
+- **Simplify**: on by default. The node then returns `result` (the output of the script),
+  `status`, `id`, `url` (the run's steps and screenshots), `script`, `started_at` and
+  `finished_at`. Set it off to get all the fields of the run. In a node that you added before
+  version 0.2.8 of this package, it is off.
+
 ## Examples
 
 Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/tree/main/examples)

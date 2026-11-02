@@ -27,7 +27,7 @@ export class Reduck implements INodeType {
 		name: 'reduck',
 		icon: { light: 'file:reduck.svg', dark: 'file:reduck.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{$parameter["script"].value}}',
 		description: 'Run Reduck browser scripts on any website',
 		defaults: { name: 'Reduck' },
@@ -65,6 +65,22 @@ export class Reduck implements INodeType {
 				options: AUTHENTICATIONS,
 				default: 'oAuth2',
 				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+			},
+			// The one thing the node does. It names the action that the nodes panel and an AI agent show.
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Run',
+						value: 'run',
+						action: 'Run script',
+						description: 'Run a browser script on a website',
+					},
+				],
+				default: 'run',
 			},
 			{
 				displayName: 'Script',
@@ -170,6 +186,24 @@ export class Reduck implements INodeType {
 					'The ISO 3166 alpha-2 code of the country the managed browser connects to the site from, through a residential proxy. Use it for a site that changes by country. Leave it empty to connect from the datacenter.',
 				displayOptions: { show: { deviceId: [''] } },
 			},
+			// Versions 1 and 1.1 return the whole run, which their saved nodes keep (see
+			// Authentication). From 1.2 on, a node starts with the simplified item.
+			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return a simplified version of the response instead of the raw data',
+				displayOptions: { show: { '@version': [{ _cnd: { lt: 1.2 } }] } },
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return a simplified version of the response instead of the raw data',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+			},
 		],
 	};
 
@@ -186,13 +220,18 @@ export class Reduck implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const run = await runScript(this, i);
+				const runUrl = `${await reduckUrl(this)}/runs/${run.id}`;
 				if (run.result && 'error' in run.result) {
+					// The message says what happened; the description, what to do about it.
 					throw new NodeOperationError(this.getNode(), run.result.error, {
 						itemIndex: i,
-						description: `The run's steps and screenshots: ${await reduckUrl(this)}/runs/${run.id}`,
+						description: [run.external_message, `The run's steps and screenshots: ${runUrl}`]
+							.filter(Boolean)
+							.join('\n'),
 					});
 				}
-				out.push({ json: toItem(run), pairedItem: { item: i } });
+				const simplify = this.getNodeParameter('simplify', i, false) as boolean;
+				out.push({ json: simplify ? simplifyRun(run, runUrl) : toItem(run), pairedItem: { item: i } });
 			} catch (error) {
 				// This node's own errors already carry their message; anything else came from the API.
 				const failure =
@@ -265,8 +304,19 @@ async function runScript(ctx: IExecuteFunctions, i: number): Promise<Run> {
 	return run;
 }
 
+const scriptOutput = (run: Run): IDataObject | null =>
+	run.result && 'result' in run.result ? (run.result.result as IDataObject) : null;
+
 // The run, with the script's output as `result` (the API wraps it as { result }).
-const toItem = (run: Run): IDataObject => ({
-	...run,
-	result: run.result && 'result' in run.result ? (run.result.result as IDataObject) : null,
+const toItem = (run: Run): IDataObject => ({ ...run, result: scriptOutput(run) });
+
+// What a workflow or an AI agent reads of a run: its output first, then where to see it.
+const simplifyRun = (run: Run, url: string): IDataObject => ({
+	result: scriptOutput(run),
+	status: run.status,
+	id: run.id,
+	url,
+	script: run.script ? `${run.script.handle}/${run.script.host}/${run.script.slug}` : null,
+	started_at: run.started_at,
+	finished_at: run.finished_at,
 });
