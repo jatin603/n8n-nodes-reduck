@@ -183,11 +183,10 @@ Reduck node of a workflow into two nodes.
    ```
 
    The converter writes each node it converts, and each node it keeps with the reason.
-3. Import `workflow-http.json` in n8n Cloud. In each HTTP Request node, select a credential:
-   - For a node that used an API key: a **Header Auth** credential, with the name `X-API-Key`
-     and your [API key](https://reduck.ai/api-keys) as the value.
-   - For a node that used OAuth2: an **OAuth2 API** credential, with **Use Dynamic Client
-     Registration** on and the server URL `https://reduck.ai`.
+3. Import `workflow-http.json` in n8n Cloud. In each HTTP Request node, select a **Header Auth**
+   credential, with the name `X-API-Key` and your [API key](https://reduck.ai/api-keys) as the
+   value. Use an API key also for a node that signed in with OAuth2: the OAuth2 credential of
+   n8n cannot sign in to Reduck.
 
 To go back to Reduck nodes, for example when n8n verifies this node, use `--to reduck`. A pair
 that you edited after the conversion stays as it is.
@@ -200,8 +199,8 @@ Some nodes stay Reduck nodes, because an HTTP Request node cannot do what they d
 
 A converted node also has these differences:
 
-- A run that takes more than 55 seconds fails: reduck.ai closes a request after 60 seconds. The
-  run continues, and the error gives its link. The Reduck node waits for the run until it ends.
+- A run that takes more than 55 seconds fails: one request waits 55 seconds at most. The run
+  continues, and the error gives its link. The Reduck node waits for the run until it ends.
 - On the error output (**Continue (using error output)**), the item has the fields of the
   Reduck answer, not those of the item that came into the node.
 

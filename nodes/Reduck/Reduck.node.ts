@@ -253,8 +253,8 @@ export class Reduck implements INodeType {
 }
 
 // Starts the run and reads it again until it ends. n8n's own workflow timeout bounds the wait.
-// The run request holds for the API's default wait: reduck.ai closes a request held 60 s without
-// an answer, which the API's longest wait passes.
+// The run request holds for the API's default wait, under the 60 s after which VPNs and proxies
+// drop a connection that carries no byte.
 async function runScript(ctx: IExecuteFunctions, i: number): Promise<Run> {
 	const address = ctx.getNodeParameter('script', i, '', { extractValue: true }) as string;
 	const script = parseScriptAddress(address);

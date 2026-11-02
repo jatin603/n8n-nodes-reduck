@@ -12,7 +12,7 @@
 // edited by hand stays as it is, and the report says why.
 //
 // What does not convert, and stays a Reduck node: a script or a browser given by an expression,
-// a file input (n8n Cloud gives no file bytes to an expression), a node used as an AI tool.
+// a file input (n8n Cloud gives no file bytes to an expression), a node an AI agent uses as a tool.
 //
 // Usage: node convert/convert.mjs --to http|reduck [--url https://reduck.ai] [--credential <id>]
 //        < workflow.json > converted.json
@@ -23,34 +23,47 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export const REDUCK_TYPE = '@reduck-ai/n8n-nodes-reduck.reduck';
-// The type of the node when n8n loads this package from its custom folder (local development).
-const CUSTOM_TYPE = 'CUSTOM.reduck';
+// The package's name in a node type; CUSTOM when n8n loads it from its custom folder (local
+// development). n8n names the AI tool form of a node "<node>Tool".
+const PACKAGES = ['@reduck-ai/n8n-nodes-reduck', 'CUSTOM'];
 const HTTP_TYPE = 'n8n-nodes-base.httpRequest';
 const CODE_TYPE = 'n8n-nodes-base.code';
+// An API key, whatever the Reduck node used: n8n's own OAuth2 credential keeps dynamic client
+// registration off, so it cannot register with Reduck.
+const AUTH_TYPE = 'httpHeaderAuth';
 const PAIRED_BROWSER = 'extension';
-// How long the run request waits for the run (wait_seconds): reduck.ai closes a request that
-// gets no answer in 60 s. A longer run fails here, where the Reduck node reads it again until it
-// ends: a Code node cannot make a request with a credential.
+// How long the run request waits for the run (wait_seconds): the longest wait the API takes
+// (RUN_WAIT_SECONDS.max in the app). A longer run fails here, where the Reduck node reads it again
+// until it ends: a Code node cannot make a request with a credential.
 const WAIT_SECONDS = 55;
 // The two nodes sit on each side of where the Reduck node was.
 const HALF_GAP = 100;
-// Node settings that act on the request: they go to the HTTP Request node. The others (notes,
-// onError, alwaysOutputData, ...) go to the Code node, which gives the output.
-const REQUEST_SETTINGS = ['retryOnFail', 'maxTries', 'waitBetweenTries', 'executeOnce'];
+// What makes a node, apart from its settings (notes, onError, retryOnFail, ...).
 const NODE_KEYS = ['id', 'name', 'type', 'typeVersion', 'position', 'parameters', 'credentials'];
+// The settings that act on the request go to the HTTP Request node, the others to the Code node,
+// which gives the output.
+const REQUEST_SETTINGS = ['retryOnFail', 'maxTries', 'waitBetweenTries', 'executeOnce'];
 const MARKER = '// @reduck-ai/n8n-nodes-reduck: the output of a Reduck node.';
 
+const pick = (object, keep) =>
+	Object.fromEntries(Object.entries(object).filter(([key]) => keep(key)));
+const isSetting = (key) => !NODE_KEYS.includes(key);
+const isRequestSetting = (key) => REQUEST_SETTINGS.includes(key);
 const isExpression = (value) => typeof value === 'string' && value.startsWith('=');
+
+// "reduck" for a Reduck node, "reduckTool" for one an AI agent uses, null for any other node.
+function reduckKind(node) {
+	const dot = node.type.lastIndexOf('.');
+	return PACKAGES.includes(node.type.slice(0, dot)) ? node.type.slice(dot + 1) : null;
+}
 
 // The parameters the Reduck node runs with: each one as it is saved, or its default for the
 // node's version (n8n saves no parameter that equals its default).
 function reduckSettings(node) {
 	const p = node.parameters ?? {};
 	const v = node.typeVersion ?? 1;
-	const script = typeof p.script === 'object' && p.script !== null ? p.script.value : p.script;
 	return {
-		authentication: p.authentication ?? (v >= 1.1 ? 'oAuth2' : 'apiKey'),
-		script: script ?? '',
+		script: (typeof p.script === 'object' ? p.script?.value : p.script) ?? '',
 		args: p.args?.value ?? {},
 		deviceId: p.deviceId ?? (v >= 1.1 ? PAIRED_BROWSER : ''),
 		region: p.region ?? 'eu-central-1',
@@ -60,14 +73,16 @@ function reduckSettings(node) {
 }
 
 // Why the node cannot be an HTTP Request node, or null when it can.
-function refusal(s) {
+function refusal(node, s) {
+	if (reduckKind(node) !== 'reduck') return 'an AI agent uses it as a tool';
 	if (isExpression(s.script)) return 'its script is given by an expression';
 	if (s.script.split('/').length !== 3 || s.script.split('/').some((part) => !part.trim()))
 		return `"${s.script}" is not a script address (handle/host/slug)`;
 	if (isExpression(s.deviceId)) return 'its browser is given by an expression';
-	if (Object.keys(s.args).some((key) => key.startsWith('file:')))
+	const keys = Object.keys(s.args);
+	if (keys.some((key) => key.startsWith('file:')))
 		return 'it sends a file, and n8n Cloud gives no file bytes to an HTTP Request node';
-	if (Object.keys(s.args).some((key) => /[.[\]]/.test(key)))
+	if (keys.some((key) => /[.[\]]/.test(key)))
 		return 'an argument name has ".", "[" or "]", which the HTTP Request node reads as a path';
 	return null;
 }
@@ -152,19 +167,10 @@ return { json: { result: output, status: run.status, id: run.id, url, script, st
 `;
 
 // The HTTP Request node and the Code node that replace a Reduck node.
-function httpPair(node, s, { url, credential }) {
+function toPair(node, origin, credential) {
+	const s = reduckSettings(node);
 	const [x, y] = node.position ?? [0, 0];
-	const settings = Object.fromEntries(
-		Object.entries(node).filter(([key]) => !NODE_KEYS.includes(key)),
-	);
-	const requestSettings = Object.fromEntries(
-		Object.entries(settings).filter(([key]) => REQUEST_SETTINGS.includes(key)),
-	);
-	const outputSettings = Object.fromEntries(
-		Object.entries(settings).filter(([key]) => !REQUEST_SETTINGS.includes(key)),
-	);
-	const authType = s.authentication === 'oAuth2' ? 'oAuth2Api' : 'httpHeaderAuth';
-	const path = s.script.split('/').map(encodeURIComponent).join('/');
+	const settings = pick(node, isSetting);
 	const request = {
 		id: randomUUID(),
 		name: `${node.name} request`,
@@ -173,9 +179,9 @@ function httpPair(node, s, { url, credential }) {
 		position: [x - HALF_GAP, y],
 		parameters: {
 			method: 'POST',
-			url: `${url}/api/scripts/${path}/runs`,
+			url: `${origin}/api/scripts/${s.script.split('/').map(encodeURIComponent).join('/')}/runs`,
 			authentication: 'genericCredentialType',
-			genericAuthType: authType,
+			genericAuthType: AUTH_TYPE,
 			sendBody: true,
 			bodyParameters: { parameters: bodyFields(s) },
 			// Reduck's answer, a refusal too, goes to the Code node as it is, which fails the way the
@@ -185,8 +191,8 @@ function httpPair(node, s, { url, credential }) {
 				timeout: (WAIT_SECONDS + 10) * 1000,
 			},
 		},
-		...(credential ? { credentials: { [authType]: credential } } : {}),
-		...requestSettings,
+		...(credential ? { credentials: { [AUTH_TYPE]: credential } } : {}),
+		...pick(settings, isRequestSetting),
 		...(settings.disabled ? { disabled: true } : {}),
 		// A request with no answer goes on to the Code node too.
 		onError: 'continueRegularOutput',
@@ -199,78 +205,87 @@ function httpPair(node, s, { url, credential }) {
 		position: [x + HALF_GAP, y],
 		parameters: {
 			mode: 'runOnceForEachItem',
-			jsCode: outputCode(url, s.simplify, continues(settings)),
+			jsCode: outputCode(origin, s.simplify, continues(settings)),
 		},
-		...outputSettings,
+		...pick(settings, (key) => !isRequestSetting(key)),
 	};
 	return [request, output];
 }
 
-// The Reduck node, at its latest version, that the pair came from.
-function reduckNode(request, output, { type, credential }) {
-	const p = request.parameters;
-	const fields = Object.fromEntries(p.bodyParameters.parameters.map((f) => [f.name, f.value]));
+// The parameters and the settings of a node, to compare. Where the nodes are and which credential
+// they use are free to change.
+const shape = (node) =>
+	JSON.stringify(
+		Object.entries(node)
+			.filter(([key]) => !['id', 'credentials', 'position'].includes(key))
+			.sort(([a], [b]) => a.localeCompare(b)),
+	);
+
+// The Reduck node, at its latest version, that the pair came from; null when converting that node
+// again does not give the same pair: the pair was edited.
+function fromPair(request, output, type, credential) {
+	const match = /^(.*)\/api\/scripts\/([^/]+)\/([^/]+)\/([^/]+)\/runs$/.exec(
+		request.parameters.url,
+	);
+	if (!match) return null;
+	const fields = Object.fromEntries(
+		request.parameters.bodyParameters.parameters.map((f) => [f.name, f.value]),
+	);
 	const args = Object.fromEntries(
 		Object.entries(fields)
 			.filter(([name]) => name.startsWith('args.'))
 			.map(([name, value]) => [name.slice('args.'.length), fromField(value)]),
 	);
-	const match = /^(.*)\/api\/scripts\/([^/]+)\/([^/]+)\/([^/]+)\/runs$/.exec(p.url);
-	const authentication = p.genericAuthType === 'oAuth2Api' ? 'oAuth2' : 'apiKey';
-	const simplify =
-		/^const simplify = (true|false);$/m.exec(output.parameters.jsCode)?.[1] === 'true';
 	const deviceId = fields.browser ?? fields.device_id ?? '';
-	const settings = Object.fromEntries(
-		Object.entries({ ...request, ...output }).filter(
-			([key]) => !NODE_KEYS.includes(key) && key !== 'onError',
-		),
-	);
 	const [x, y] = output.position;
-	return {
-		node: {
-			id: output.id,
-			name: output.name,
-			type,
-			typeVersion: 1.2,
-			position: [x - HALF_GAP, y],
-			parameters: {
-				authentication,
-				script: {
-					__rl: true,
-					mode: 'address',
-					value: match ? match.slice(2).map(decodeURIComponent).join('/') : '',
-				},
-				args: {
-					mappingMode: 'defineBelow',
-					value: args,
-					matchingColumns: [],
-					// The node reads the script's schema again when it opens.
-					schema: Object.entries(args).map(([id, value]) => ({
-						id,
-						displayName: id,
-						required: false,
-						defaultMatch: false,
-						display: true,
-						type: typeof value === 'boolean' || typeof value === 'number' ? typeof value : 'string',
-						canBeUsedToMatch: false,
-					})),
-				},
-				deviceId,
-				...(deviceId ? {} : { region: fields.region ?? '', country: fields.country ?? '' }),
-				simplify,
+	const node = {
+		id: output.id,
+		name: output.name,
+		type,
+		typeVersion: 1.2,
+		position: [x - HALF_GAP, y],
+		parameters: {
+			authentication: 'apiKey',
+			script: {
+				__rl: true,
+				mode: 'address',
+				value: match.slice(2).map(decodeURIComponent).join('/'),
 			},
-			...(credential
-				? {
-						credentials: {
-							[authentication === 'oAuth2' ? 'reduckOAuth2Api' : 'reduckApi']: credential,
-						},
-					}
-				: {}),
-			...settings,
-			...(output.onError ? { onError: output.onError } : {}),
+			args: {
+				mappingMode: 'defineBelow',
+				value: args,
+				matchingColumns: [],
+				// The node reads the script's schema again when it opens.
+				schema: Object.entries(args).map(([id, value]) => ({
+					id,
+					displayName: id,
+					required: false,
+					defaultMatch: false,
+					display: true,
+					type: typeof value === 'boolean' || typeof value === 'number' ? typeof value : 'string',
+					canBeUsedToMatch: false,
+				})),
+			},
+			deviceId,
+			...(deviceId ? {} : { region: fields.region ?? '', country: fields.country ?? '' }),
+			simplify: /^const simplify = true;$/m.test(output.parameters.jsCode),
 		},
-		origin: match?.[1],
+		...(credential ? { credentials: { reduckApi: credential } } : {}),
+		...pick(request, isRequestSetting),
+		...pick(output, isSetting),
 	};
+	const [again, againOutput] = toPair(node, match[1]);
+	return shape(again) === shape(request) && shape(againOutput) === shape(output) ? node : null;
+}
+
+// Why the Code node and the node named "<its name> request" are not a pair, or null.
+function pairProblem(output, request, connections) {
+	if (!request) return `no node is named "${output.name} request"`;
+	if (request.type !== HTTP_TYPE) return `"${request.name}" is not an HTTP Request node`;
+	const into = connections[request.name]?.main;
+	if (into?.length !== 1 || into[0]?.length !== 1 || into[0][0].node !== output.name)
+		return `"${request.name}" does not connect to it alone`;
+	return null;
 }
 
 // Renames a node in the connections: what goes to `from` goes to `to`.
@@ -281,102 +296,59 @@ function retarget(connections, from, to) {
 				for (const link of branch ?? []) if (link.node === from) link.node = to;
 }
 
-const isReduck = (node) => node.type === REDUCK_TYPE || node.type === CUSTOM_TYPE;
-
-const connectedOtherThanMain = (connections, name) =>
-	Object.keys(connections[name] ?? {}).some((type) => type !== 'main') ||
-	Object.values(connections).some((outputs) =>
-		Object.entries(outputs).some(
-			([type, branches]) =>
-				type !== 'main' && branches?.some((branch) => branch?.some((link) => link.node === name)),
-		),
-	);
-
 export function toHttp(workflow, { url = 'https://reduck.ai', credential } = {}) {
 	const out = structuredClone(workflow);
 	const origin = url.replace(/\/+$/, '');
 	const report = { converted: [], kept: [] };
 	const names = new Set(out.nodes.map((node) => node.name));
 	out.nodes = out.nodes.flatMap((node) => {
-		if (!isReduck(node)) return [node];
-		const s = reduckSettings(node);
+		if (!reduckKind(node)) return [node];
 		const reason =
-			refusal(s) ??
-			(connectedOtherThanMain(out.connections, node.name) ? 'it is used as an AI tool' : null) ??
+			refusal(node, reduckSettings(node)) ??
 			(names.has(`${node.name} request`) ? `a node is named "${node.name} request" already` : null);
 		if (reason) {
 			report.kept.push({ name: node.name, reason });
 			return [node];
 		}
-		const [request, output] = httpPair(node, s, { url: origin, credential });
+		const [request, output] = toPair(node, origin, credential);
 		retarget(out.connections, node.name, request.name);
-		out.connections[request.name] = {
-			main: [[{ node: output.name, type: 'main', index: 0 }]],
-		};
+		out.connections[request.name] = { main: [[{ node: output.name, type: 'main', index: 0 }]] };
 		report.converted.push(node.name);
 		return [request, output];
 	});
 	return { workflow: out, report };
 }
 
-// The parameters and the settings that a converted pair is made of, in a form to compare. Where
-// the nodes are and which credential they use are free to change.
-const shape = (node) =>
-	JSON.stringify(
-		Object.fromEntries(
-			Object.entries(node)
-				.filter(([key]) => !['id', 'credentials', 'position'].includes(key))
-				.sort(([a], [b]) => a.localeCompare(b)),
-		),
-	);
-
 export function toReduck(workflow, { type = REDUCK_TYPE, credential } = {}) {
 	const out = structuredClone(workflow);
 	const report = { converted: [], kept: [] };
 	const byName = new Map(out.nodes.map((node) => [node.name, node]));
-	const replaced = new Map();
+	// The Reduck node of each converted pair, by the name of its request node.
+	const reduckNodes = new Map();
 	for (const output of out.nodes) {
 		if (output.type !== CODE_TYPE || !output.parameters?.jsCode?.startsWith(MARKER)) continue;
 		const request = byName.get(`${output.name} request`);
-		const into = out.connections[request?.name]?.main;
-		const reason = !request
-			? `no node is named "${output.name} request"`
-			: request.type !== HTTP_TYPE
-				? `"${request.name}" is not an HTTP Request node`
-				: into?.length !== 1 || into[0]?.length !== 1 || into[0][0].node !== output.name
-					? `"${request.name}" does not connect to it alone`
-					: null;
-		if (reason) {
-			report.kept.push({ name: output.name, reason });
-			continue;
-		}
-		const { node, origin } = reduckNode(request, output, { type, credential });
-		// Converting the Reduck node again must give the same pair: anything else was edited.
-		const [againRequest, againOutput] = origin
-			? httpPair(node, reduckSettings(node), { url: origin })
-			: [];
-		if (
-			!againRequest ||
-			shape(againRequest) !== shape(request) ||
-			shape(againOutput) !== shape(output)
-		) {
+		const problem = pairProblem(output, request, out.connections);
+		const node = problem ? null : fromPair(request, output, type, credential);
+		if (!node) {
 			report.kept.push({
 				name: output.name,
-				reason: 'the two nodes were edited after the conversion',
+				reason: problem ?? 'the two nodes were edited after the conversion',
 			});
 			continue;
 		}
-		replaced.set(output.name, { node, request: request.name });
+		reduckNodes.set(request.name, node);
 		report.converted.push(output.name);
 	}
-	out.nodes = out.nodes.flatMap((n) => {
-		if (replaced.has(n.name)) return [replaced.get(n.name).node];
-		if ([...replaced.values()].some((r) => r.request === n.name)) return [];
-		return [n];
-	});
-	for (const [name, { request }] of replaced) {
+	const converted = new Set(report.converted);
+	out.nodes = out.nodes.flatMap((node) =>
+		reduckNodes.has(node.name)
+			? []
+			: [converted.has(node.name) ? reduckNodes.get(`${node.name} request`) : node],
+	);
+	for (const [request, node] of reduckNodes) {
 		delete out.connections[request];
-		retarget(out.connections, request, name);
+		retarget(out.connections, request, node.name);
 	}
 	return { workflow: out, report };
 }

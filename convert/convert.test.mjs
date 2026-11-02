@@ -19,7 +19,6 @@ function behavior(node) {
 	);
 	return {
 		name: node.name,
-		authentication: p.authentication ?? (v >= 1.1 ? 'oAuth2' : 'apiKey'),
 		script: p.script.value,
 		args,
 		deviceId,
@@ -136,10 +135,16 @@ test('what an HTTP Request node cannot do stays a Reduck node, with the reason',
 		assert.match(report.kept[0].reason, reason);
 	}
 	const tool = {
-		...workflowOf(node({})),
+		...workflowOf(node({}, { type: `${REDUCK_TYPE}Tool` })),
 		connections: { Run: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] } },
 	};
-	assert.match(toHttp(tool).report.kept[0].reason, /AI tool/);
+	const { workflow, report } = toHttp(tool);
+	assert.deepEqual(workflow, tool);
+	assert.match(report.kept[0].reason, /AI agent uses it as a tool/);
+	assert.deepEqual(toHttp(workflowOf({ ...node({}), type: 'n8n-nodes-base.noOp' })).report, {
+		converted: [],
+		kept: [],
+	});
 });
 
 test('a pair edited by hand stays as it is', () => {
@@ -253,7 +258,8 @@ test('settings go where they act, and a URL and a credential carry over', () => 
 		request.parameters.url,
 		'http://localhost:5173/api/scripts/reduck/example.com/ping/runs',
 	);
-	assert.deepEqual(request.credentials, { oAuth2Api: { id: 'c1', name: 'Reduck key' } });
+	assert.equal(request.parameters.genericAuthType, 'httpHeaderAuth');
+	assert.deepEqual(request.credentials, { httpHeaderAuth: { id: 'c1', name: 'Reduck key' } });
 	assert.equal(request.onError, 'continueRegularOutput');
 	assert.equal(request.retryOnFail, true);
 	assert.equal(request.maxTries, 3);
@@ -262,7 +268,8 @@ test('settings go where they act, and a URL and a credential carry over', () => 
 	assert.equal(output.retryOnFail, undefined);
 	assert.match(output.parameters.jsCode, /'http:\/\/localhost:5173\/runs\/'/);
 	const back = toReduck(workflow, { credential: { id: 'c2', name: 'k' } }).workflow.nodes[0];
-	assert.deepEqual(back.credentials, { reduckOAuth2Api: { id: 'c2', name: 'k' } });
+	assert.equal(back.parameters.authentication, 'apiKey');
+	assert.deepEqual(back.credentials, { reduckApi: { id: 'c2', name: 'k' } });
 	assert.equal(back.onError, 'continueErrorOutput');
 	assert.equal(back.maxTries, 3);
 });
