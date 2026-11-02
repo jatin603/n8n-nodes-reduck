@@ -15,6 +15,16 @@ import { FILE_FIELD, PAIRED_BROWSER, getDevices, getScriptArgs, searchScripts } 
 import { parseScriptAddress, reduckRequest, reduckUrl, type Run } from './transport';
 
 const POLL_MS = 2000;
+// The managed browser's budget, and 10 runs of 3 minutes on a 2-slot device still start inside the
+// queue's 16-minute wait.
+const BATCH = 10;
+
+// One input item's run: its place in the output, its script, and where it runs.
+interface ItemRun {
+	i: number;
+	script: IDataObject;
+	target: IDataObject;
+}
 
 const AUTHENTICATIONS = [
 	{ name: 'OAuth2', value: 'oAuth2' },
@@ -27,7 +37,7 @@ export class Reduck implements INodeType {
 		name: 'reduck',
 		icon: { light: 'file:reduck.svg', dark: 'file:reduck.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{$parameter["script"].value}}',
 		description: 'Run Reduck browser scripts on any website',
 		defaults: { name: 'Reduck' },
@@ -214,48 +224,95 @@ export class Reduck implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		// Below 1.3, each item runs alone and in order, which a saved workflow may rely on.
+		const size = this.getNode().typeVersion >= 1.3 ? BATCH : 1;
 		const items = this.getInputData();
-		const out: INodeExecutionData[] = [];
+		const out = new Array<INodeExecutionData>(items.length);
 
+		const fail = (error: unknown, i: number) => {
+			// This node's own errors already carry their message; anything else came from the API.
+			const failure =
+				error instanceof NodeOperationError || error instanceof NodeApiError
+					? error
+					: new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
+			if (!this.continueOnFail()) throw failure;
+			// n8n's own shape for a failed item: { error, details } and nothing else is what sends it
+			// down the error output ("Continue (using error output)"). Not `item.error`: n8n then
+			// rewrites json to the message alone and the run's link in `details` is lost.
+			out[i] = {
+				json: { error: failure.message, ...(failure.description ? { details: failure.description } : {}) },
+				pairedItem: { item: i },
+			};
+		};
+
+		// One request has one browser target, and stays under the API's 4.5 MB: a file goes alone.
+		const groups = new Map<string, ItemRun[]>();
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const run = await runScript(this, i);
-				const runUrl = `${await reduckUrl(this)}/runs/${run.id}`;
-				if (run.result && 'error' in run.result) {
-					// The message says what happened; the description, what to do about it.
-					throw new NodeOperationError(this.getNode(), run.result.error, {
-						itemIndex: i,
-						description: [run.external_message, `The run's steps and screenshots: ${runUrl}`]
-							.filter(Boolean)
-							.join('\n'),
-					});
-				}
-				const simplify = this.getNodeParameter('simplify', i, false) as boolean;
-				out.push({ json: simplify ? simplifyRun(run, runUrl) : toItem(run), pairedItem: { item: i } });
+				const item = await itemRunOf(this, i);
+				const key = size === 1 || item.script.files ? `item ${i}` : JSON.stringify(item.target);
+				groups.set(key, [...(groups.get(key) ?? []), item]);
 			} catch (error) {
-				// This node's own errors already carry their message; anything else came from the API.
-				const failure =
-					error instanceof NodeOperationError || error instanceof NodeApiError
-						? error
-						: new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
-				if (!this.continueOnFail()) throw failure;
-				// n8n's own shape for a failed item: { error, details } and nothing else is what sends it
-				// down the error output ("Continue (using error output)"). Not `item.error`: n8n then
-				// rewrites json to the message alone and the run's link in `details` is lost.
-				out.push({
-					json: { error: failure.message, ...(failure.description ? { details: failure.description } : {}) },
-					pairedItem: { item: i },
-				});
+				fail(error, i);
+			}
+		}
+
+		for (const group of groups.values()) {
+			for (let at = 0; at < group.length; at += size) {
+				const slice = group.slice(at, at + size);
+				let runs: Run[] = [];
+				try {
+					runs = await runBatch(this, slice);
+				} catch (error) {
+					slice.forEach(({ i }) => fail(error, i));
+				}
+				for (const [j, run] of runs.entries()) {
+					const { i } = slice[j];
+					try {
+						const runUrl = `${await reduckUrl(this)}/runs/${run.id}`;
+						if (run.result && 'error' in run.result) {
+							// The message says what happened; the description, what to do about it.
+							throw new NodeOperationError(this.getNode(), run.result.error, {
+								itemIndex: i,
+								description: [run.external_message, `The run's steps and screenshots: ${runUrl}`]
+									.filter(Boolean)
+									.join('\n'),
+							});
+						}
+						const simplify = this.getNodeParameter('simplify', i, false) as boolean;
+						out[i] = { json: simplify ? simplifyRun(run, runUrl) : toItem(run), pairedItem: { item: i } };
+					} catch (error) {
+						fail(error, i);
+					}
+				}
 			}
 		}
 		return [out];
 	}
 }
 
-// Starts the run and reads it again until it ends. n8n's own workflow timeout bounds the wait.
+// Starts the runs and reads them again until they end. n8n's own workflow timeout bounds the wait.
 // The run request holds for the API's default wait, under the 60 s after which VPNs and proxies
 // drop a connection that carries no byte.
-async function runScript(ctx: IExecuteFunctions, i: number): Promise<Run> {
+async function runBatch(ctx: IExecuteFunctions, items: ItemRun[]): Promise<Run[]> {
+	const batch = await reduckRequest<{ batch_id: string; runs: Run[] }>(ctx, 'POST', '/api/runs', {
+		body: { scripts: items.map((item) => item.script), ...items[0].target },
+	});
+	let { runs } = batch;
+	while (runs.some((run) => run.finished_at === null)) {
+		await sleep(POLL_MS);
+		({ data: runs } = await reduckRequest<{ data: Run[] }>(ctx, 'GET', '/api/runs', {
+			qs: { batch_id: batch.batch_id, page_size: BATCH },
+		}));
+	}
+	// An item finds its run by position.
+	if (runs.length !== items.length) {
+		throw new NodeOperationError(ctx.getNode(), `Asked for ${items.length} runs, and Reduck answered for ${runs.length}`);
+	}
+	return runs;
+}
+
+async function itemRunOf(ctx: IExecuteFunctions, i: number): Promise<ItemRun> {
 	const address = ctx.getNodeParameter('script', i, '', { extractValue: true }) as string;
 	const script = parseScriptAddress(address);
 	if (!script) {
@@ -284,24 +341,17 @@ async function runScript(ctx: IExecuteFunctions, i: number): Promise<Run> {
 	const region = ctx.getNodeParameter('region', i, '') as string;
 	const country = (ctx.getNodeParameter('country', i, '') as string).trim();
 
-	const scriptPath = [script.handle, script.host, script.slug].map(encodeURIComponent).join('/');
-	let run = await reduckRequest<Run>(ctx, 'POST', `/api/scripts/${scriptPath}/runs`, {
-		body: {
-			args,
-			...(Object.keys(files).length ? { files } : {}),
-			// A paired browser, or the managed one with its options: never a mix the API refuses.
-			...(deviceId === PAIRED_BROWSER
+	return {
+		i,
+		script: { ...script, args, ...(Object.keys(files).length ? { files } : {}) },
+		// A paired browser, or the managed one with its options: never a mix the API refuses.
+		target:
+			deviceId === PAIRED_BROWSER
 				? { browser: PAIRED_BROWSER }
 				: deviceId
 					? { device_id: deviceId }
-					: { ...(region ? { region } : {}), ...(country ? { country } : {}) }),
-		},
-	});
-	while (run.finished_at === null) {
-		await sleep(POLL_MS);
-		run = await reduckRequest<Run>(ctx, 'GET', `/api/runs/${encodeURIComponent(run.id)}`);
-	}
-	return run;
+					: { ...(region ? { region } : {}), ...(country ? { country } : {}) },
+	};
 }
 
 const scriptOutput = (run: Run): IDataObject | null =>
