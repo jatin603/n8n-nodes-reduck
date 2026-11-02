@@ -23,8 +23,9 @@ With Reduck you can:
 - Search Reddit and read every comment of a thread.
 - ... or create your own workflow on top of any site without API!
 
-You can run scripts from the [Reduck library](https://reduck.ai/explore), or from ones you create yourself for custom integrations (see
-[Building your own script](#building-your-own-script-and-using-it)) using Reduck MCP.
+You can run scripts from the [Reduck library](https://reduck.ai/explore), or scripts that your
+agent creates with Reduck MCP for custom integrations (see
+[Build your own integrations](https://docs.reduck.ai/#build-your-own-integrations)).
 
 A script runs in a browser. You choose which one in the node's **Browser** field:
 
@@ -121,88 +122,22 @@ To choose between the two, see the [FAQ](#faq).
 
 <!-- /tabs -->
 
-## Node reference
-
-The node has one operation, **Run script**: it runs a script and waits until the run ends.
-
-- **Script**: the script to run. Select it from the list, or type its address
-  (`handle/host/slug`, for example `reduck/google.com/get_ai_overview`).
-- **Arguments**: one field for each input of the script. A file input names the binary property
-  of the input item that holds the file.
-- **Browser**: your paired browser (the default), one of your paired browsers by name, or a
-  Reduck managed browser.
-- **Region** and **Country**: for a managed browser only. **Region** is its datacenter.
-  **Country** makes it connect from a home address in that country.
-- **Simplify**: on by default. The node then returns `result` (the output of the script),
-  `status`, `id`, `url` (the run's steps and screenshots), `script`, `started_at` and
-  `finished_at`. Set it off to get all the fields of the run. In a node that you added before
-  version 0.2.8 of this package, it is off.
-
 ## Examples
 
 Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/tree/main/examples)
 (**Workflows > Import from File**), then select your Reduck credential in its Reduck node.
 
-- [Book a Doctolib appointment](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/doctolib-book-appointment.json):
-  every hour, looks for a free slot with the doctors you list, inside your dates, weekdays and
-  hours. It books the earliest slot that fits from your paired browser and emails you from your
-  Gmail. When you already have an upcoming appointment with one of these doctors, it books
-  nothing, so you always get one appointment. Before you activate it, fill in its **Config**
-  node.
-- [Does ChatGPT cite your brand?](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/chatgpt-brand-visibility.json):
-  every morning, asks ChatGPT your buyers' questions in the ChatGPT app and records whether the
-  answer cites your site, names you, or cites others. The rows go to an n8n data table.
-- [Google AI Overview, on a webhook](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/google-ai-overview-webhook.json):
-  answers `GET /webhook/ai-overview?q=<search>` with the AI Overview Google shows for that search,
-  as JSON. The CLI [quick start](#quick-start) uses it.
-- [Reddit replies, with a review page](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/reddit-engage.json):
-  every day, reads the new threads in your subreddits, keeps the threads where the author has
-  the problem you solve, and drafts one reply for each person with Google Gemini. You read each
-  draft next to its thread at `<your n8n>/form/reddit-review`, then approve, edit, reject or skip
-  it. An approved reply goes on Reddit from your paired browser. Before you activate it, fill in
-  its **Config** node and select a Google Gemini credential in its **Pre-screen** and **Decide and
-  draft** nodes.
-
-## n8n Cloud
-
-n8n Cloud installs only the community nodes that n8n has verified, and this node is not
-verified yet. On n8n Cloud, run your scripts with nodes that n8n has: a converter changes each
-Reduck node of a workflow into two nodes.
-
-- **`<name> request`**, an HTTP Request node, starts the run and waits for it.
-- **`<name>`**, a Code node, gives the same item and the same errors as the Reduck node. It
-  keeps the name, so the nodes after it do not change.
-
-1. Download the workflow to a file (**Download** in the workflow menu), for example
-   `workflow.json`.
-2. Convert it:
-
-   ```bash
-   curl -sO https://raw.githubusercontent.com/reduck-ai/n8n-nodes-reduck/main/convert/convert.mjs
-   node convert.mjs --to http < workflow.json > workflow-http.json
-   ```
-
-   The converter writes each node it converts, and each node it keeps with the reason.
-3. Import `workflow-http.json` in n8n Cloud. In each HTTP Request node, select a **Header Auth**
-   credential, with the name `X-API-Key` and your [API key](https://reduck.ai/api-keys) as the
-   value. Use an API key also for a node that signed in with OAuth2: the OAuth2 credential of
-   n8n cannot sign in to Reduck.
-
-To go back to Reduck nodes, for example when n8n verifies this node, use `--to reduck`. A pair
-that you edited after the conversion stays as it is.
-
-Some nodes stay Reduck nodes, because an HTTP Request node cannot do what they do:
-
-- A script or a browser that comes from an expression.
-- A file input: n8n Cloud gives no file to an expression.
-- A node that an AI agent uses as a tool.
-
-A converted node also has these differences:
-
-- A run that takes more than 55 seconds fails: one request waits 55 seconds at most. The run
-  continues, and the error gives its link. The Reduck node waits for the run until it ends.
-- On the error output (**Continue (using error output)**), the item has the fields of the
-  Reduck answer, not those of the item that came into the node.
+- [Doctolib booking](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/doctolib-book-appointment.json):
+  check your doctors' free slots every hour, then book the earliest one in your dates and email
+  you.
+- [ChatGPT brand monitoring](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/chatgpt-brand-visibility.json):
+  ask ChatGPT your buyers' questions daily, then record if each answer cites your site, names
+  you, or cites other sites.
+- [Google AI Overview API](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/google-ai-overview-webhook.json):
+  call a webhook with a search, then get Google's AI Overview and the pages it cites as JSON.
+- [Reddit monitoring](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/reddit-engage.json):
+  scan specific subreddits daily, then analyze each thread and draft an answer with AI. You can
+  approve, edit or reject each draft.
 
 ## FAQ
 
@@ -227,19 +162,6 @@ address in that country, not from a datacenter.
 
 The run fails and says that the browser is not signed in. Sign in to the site again in your
 browser, and the next run works.
-
-</details>
-
-<details>
-<summary>How do I handle a failed run in my workflow?</summary>
-
-By default, a failed run stops the workflow. The node shows what went wrong and links to the
-run's steps and screenshots. To continue, open the node's **Settings** and set **On Error**:
-
-- **Continue**: the item goes on as `{ "error", "details" }`, where `error` says what went wrong
-  and `details` links to the run.
-- **Continue (using error output)**: the same item goes to a second output, so you can send
-  failures to another branch, for example to alert you.
 
 </details>
 
