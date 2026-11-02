@@ -143,6 +143,12 @@ The node has one operation, **Run script**: it runs a script and waits until the
 Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/tree/main/examples)
 (**Workflows > Import from File**), then select your Reduck credential in its Reduck node.
 
+- [Book a Doctolib appointment](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/doctolib-book-appointment.json):
+  every hour, looks for a free slot with the doctors you list, inside your dates, weekdays and
+  hours. It books the earliest slot that fits from your paired browser and emails you from your
+  Gmail. When you already have an upcoming appointment with one of these doctors, it books
+  nothing, so you always get one appointment. Before you activate it, fill in its **Config**
+  node.
 - [Does ChatGPT cite your brand?](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/chatgpt-brand-visibility.json):
   every morning, asks ChatGPT your buyers' questions in the ChatGPT app and records whether the
   answer cites your site, names you, or cites others. The rows go to an n8n data table.

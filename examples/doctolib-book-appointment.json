@@ -1,0 +1,492 @@
+{
+  "name": "Book a Doctolib appointment",
+  "nodes": [
+    {
+      "id": "read-me",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -560
+      ],
+      "parameters": {
+        "width": 900,
+        "height": 520,
+        "content": "## Book a Doctolib appointment, with Reduck\n\nEvery hour, this workflow looks for a free slot with the doctors you list, inside your dates. It books the earliest slot that fits and emails you. When you already have an upcoming appointment with one of these doctors, it books nothing. You can run it again and again: you get one appointment.\n\n**Set it up**\n1. Install the Reduck extension in Chrome and pair it. In that Chrome, sign in to Doctolib and to Gmail.\n2. In each of the four Reduck nodes, pick your Reduck account in **Credential**: **Connect to Reduck** signs in with OAuth2. To use an API key instead, first set **Authentication** to **API Key**.\n3. Edit **Config**, and only Config:\n   - `doctors`: the Doctolib link of each doctor, one per line. On doctolib.fr, open the doctor, click Book, choose the place and the type of visit, then copy the address of the page that shows the dates. It looks like `https://www.doctolib.fr/<specialty>/<city>/<name>/booking/availabilities?…placeId=practice-123…&motiveIds[]=456…`.\n   - `from`, `to`: the first and last day you accept, YYYY-MM-DD.\n   - `weekdays`: for example `tue, thu, fri`. Empty: every day.\n   - `hours`: the start time of the slot, in Paris time, both ends included: `08:00-18:30` books a slot that starts at 18:30, not one at 18:45. Empty: any time.\n   - `new_patient`: `true` if it is your first visit to this doctor.\n   - `notify_to`: who gets the email (required). `notify_from`: the Gmail account that sends it, signed in in your Chrome. Empty: Gmail's default account.\n4. Click **Execute workflow** to run it once. This is not a test: if a slot fits, it books it and sends the email. Then click **Publish** to run it every hour.\n\n**What happens**\n- No free slot fits: nothing happens. The next hour tries again.\n- A slot fits: Reduck books it on Doctolib for the account signed in in your Chrome, and emails you the time and the address.\n- You already have an appointment with one of these doctors: nothing happens. To cancel, use Doctolib.\n\nFree slots are read on a Reduck managed browser in France. The booking and the email use your paired Chrome, so keep it open."
+      }
+    },
+    {
+      "id": "every-hour",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "Edit only this node. See the Read me.",
+      "notesInFlow": true,
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "doctors",
+              "name": "doctors",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "from",
+              "name": "from",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "to",
+              "name": "to",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "weekdays",
+              "name": "weekdays",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "hours",
+              "name": "hours",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "new_patient",
+              "name": "new_patient",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "notify_to",
+              "name": "notify_to",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "notify_from",
+              "name": "notify_from",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "doctors",
+      "name": "Doctors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Reads Config: one item per doctor and per window of 15 days at most, the most Doctolib serves at once.\nconst cfg = $('Config').first().json;\nconst day = /^\\d{4}-\\d{2}-\\d{2}$/;\nif (!day.test(cfg.from ?? '') || !day.test(cfg.to ?? '')) throw new Error('Config: set from and to as YYYY-MM-DD.');\nif (!String(cfg.notify_to ?? '').includes('@')) throw new Error('Config: set notify_to to the email address that gets the confirmation.');\nconst doctors = String(cfg.doctors ?? '').split(/[\\s,]+/).filter(Boolean);\nif (!doctors.length) throw new Error('Config: add the Doctolib link of at least one doctor to doctors, one per line.');\n\nconst today = DateTime.now().setZone('Europe/Paris').toISODate();\nconst from = cfg.from > today ? cfg.from : today;\nif (cfg.to < from) return []; // the dates are over\n\nconst out = [];\nfor (const link of doctors) {\n  // The Code node has no URL class: the link is split by hand.\n  const [base, query = ''] = String(link).trim().split('#')[0].split('?');\n  const params = Object.fromEntries(query.split('&').filter(Boolean).map((kv) => kv.split('=').map(decodeURIComponent)));\n  const path = base.replace(/^https?:\\/\\/[^/]+\\/?/, '').replace(/\\/booking(\\/.*)?$/, '').replace(/\\/+$/, '');\n  const pid = params.placeId ?? params.pid;\n  const motive = params['motiveIds[]'] ?? params['vmids[]'];\n  if (!pid || !motive)\n    throw new Error(`Config: this link does not give the place and the type of visit: ${link}. On doctolib.fr, click Book, choose both, then copy the address of the page that shows the dates.`);\n  for (let d = DateTime.fromISO(from); d.toISODate() <= cfg.to; d = d.plus({ days: 15 })) {\n    const left = DateTime.fromISO(cfg.to).diff(d, 'days').days + 1;\n    out.push({ json: { profile_path: `${path}?pid=${pid}`, motive_id: Number(motive), start_date: d.toISODate(), days: Math.min(15, left) } });\n  }\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "list-slots",
+      "name": "List slots",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {},
+      "notes": "Reduck managed browser, France",
+      "notesInFlow": true,
+      "parameters": {
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/doctolib.fr/list_slots"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "profile_path": "={{ $json.profile_path }}",
+            "motive_id": "={{ $json.motive_id }}",
+            "start_date": "={{ $json.start_date }}",
+            "days": "={{ $json.days }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "profile_path",
+              "displayName": "profile_path",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "motive_id",
+              "displayName": "motive_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "days",
+              "displayName": "days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "deviceId": "",
+        "simplify": true,
+        "region": "eu-central-1",
+        "country": "FR"
+      }
+    },
+    {
+      "id": "earliest-slot",
+      "name": "Earliest slot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// The earliest free slot inside the dates, weekdays and hours of Config. None: the run stops here.\nconst cfg = $('Config').first().json;\nconst NAMES = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];\nconst weekdays = String(cfg.weekdays ?? '').toLowerCase().split(',').map((s) => s.trim().slice(0, 3)).filter(Boolean);\nconst [earliest, latest] = String(cfg.hours ?? '').split('-').map((s) => s.trim());\nconst asked = $('Doctors').all();\n\nlet best = null;\n$input.all().forEach((item, i) => {\n  const r = item.json.result;\n  for (const { slots } of r.availabilities) {\n    for (const slot of slots) {\n      const t = DateTime.fromISO(slot, { setZone: true });\n      const hm = t.toFormat('HH:mm');\n      if (t.toISODate() < cfg.from || t.toISODate() > cfg.to) continue;\n      if (weekdays.length && !weekdays.includes(NAMES[t.weekday - 1])) continue;\n      if (earliest && hm < earliest) continue;\n      if (latest && hm > latest) continue;\n      if (!best || Date.parse(slot) < Date.parse(best.start_date))\n        best = { ...asked[i].json, start_date: slot, practitioner: r.name, motive: r.motive.name };\n    }\n  }\n});\nreturn best ? [{ json: best }] : [];"
+      }
+    },
+    {
+      "id": "list-appointments",
+      "name": "List appointments",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1.2,
+      "position": [
+        1100,
+        0
+      ],
+      "credentials": {},
+      "notes": "Your paired Chrome",
+      "notesInFlow": true,
+      "parameters": {
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/doctolib.fr/list_appointments"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "deviceId": "extension",
+        "simplify": true
+      }
+    },
+    {
+      "id": "not-booked-yet",
+      "name": "Not booked yet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// An upcoming appointment with one of the doctors means the job is done: the run stops here.\nconst doctors = new Set($('Doctors').all().map((d) => d.json.profile_path.split('?')[0]));\nconst mine = $input.first().json.result.appointments.find(\n  (a) => !a.canceled && !a.past && doctors.has(String(a.profile_path ?? '').split('?')[0]),\n);\nreturn mine ? [] : [{ json: $('Earliest slot').first().json }];"
+      }
+    },
+    {
+      "id": "book",
+      "name": "Book",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1.2,
+      "position": [
+        1540,
+        0
+      ],
+      "credentials": {},
+      "notes": "Your paired Chrome",
+      "notesInFlow": true,
+      "parameters": {
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/doctolib.fr/book_appointment"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "profile_path": "={{ $json.profile_path }}",
+            "motive_id": "={{ $json.motive_id }}",
+            "start_date": "={{ $json.start_date }}",
+            "confirm": true,
+            "new_patient": "={{ $('Config').first().json.new_patient }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "profile_path",
+              "displayName": "profile_path",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "motive_id",
+              "displayName": "motive_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "confirm",
+              "displayName": "confirm",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "new_patient",
+              "displayName": "new_patient",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "deviceId": "extension",
+        "simplify": true
+      }
+    },
+    {
+      "id": "email",
+      "name": "Email",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1.2,
+      "position": [
+        1760,
+        0
+      ],
+      "credentials": {},
+      "notes": "Your paired Chrome",
+      "notesInFlow": true,
+      "parameters": {
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/mail.google.com/send_email"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "account": "={{ $('Config').first().json.notify_from }}",
+            "to": "={{ $('Config').first().json.notify_to }}",
+            "subject": "={{ 'Doctolib: booked ' + DateTime.fromISO($json.result.appointment.start_date, { setZone: true }).setLocale('en').toFormat('ccc d LLL yyyy, HH:mm') + ' with ' + $json.result.practitioner }}",
+            "body": "={{ 'Reduck booked your Doctolib appointment.\\n\\n' + DateTime.fromISO($json.result.appointment.start_date, { setZone: true }).setLocale('en').toFormat('ccc d LLL yyyy, HH:mm') + '\\n' + $json.result.practitioner + ', ' + ($json.result.motive?.name ?? '') + '\\n' + ($json.result.appointment.address ?? $json.result.address ?? '') + '\\n\\nTo cancel or move it: https://www.doctolib.fr/account/appointments' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "account",
+              "displayName": "account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "to",
+              "displayName": "to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "body",
+              "displayName": "body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "deviceId": "extension",
+        "simplify": true
+      }
+    }
+  ],
+  "connections": {
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Doctors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doctors": {
+      "main": [
+        [
+          {
+            "node": "List slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List slots": {
+      "main": [
+        [
+          {
+            "node": "Earliest slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Earliest slot": {
+      "main": [
+        [
+          {
+            "node": "List appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List appointments": {
+      "main": [
+        [
+          {
+            "node": "Not booked yet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Not booked yet": {
+      "main": [
+        [
+          {
+            "node": "Book",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Book": {
+      "main": [
+        [
+          {
+            "node": "Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
