@@ -18,7 +18,8 @@ description: |
   of our accounts, data or help.
 - **n8n's pages are the rules.** They are loaded below, as they are today. When this skill and
   them disagree, they win: fix this skill.
-- **The notes are the manual.** Each claim in a note is true of the nodes, or it is a bug.
+- **The notes are the manual.** Each claim is true: of the nodes, or, for another product, with a
+  source. A claim you cannot check goes.
 - **A run is repeated.** A schedule runs it again and again: a run with nothing to do does nothing,
   and a write happens once.
 - **Test what ships.** The exact file, in an n8n that has never seen it.
@@ -38,41 +39,49 @@ description: |
 **Files**
 - `examples/<what-it-does>.json`, listed in the README's **Examples**. A change to `examples/` is
   not a release.
-- Its picture is required (n8n asks one for a community node): `images/<same-name>-workflow.png`.
+- A picture is required (n8n asks one for a community node): a PNG in `images/`, named after the
+  example.
 - The type is `@reduck-ai/n8n-nodes-reduck.reduck`. The dev n8n names it `CUSTOM.reduck`: rewrite
   it in a copy to test there, never in the file.
 
 **Config**
-- One Set node named `Config`, after the trigger. Placeholders, never our values.
+- One Set node named `Config`. Every trigger leads to it. Placeholders, never our values.
   Example: `subreddits` = `<subreddit>, <subreddit>`, not `mcp, n8n`.
-- The first Code node checks it, and fails before any Reduck node runs.
+- Everything a user would change is there: values held in a Code node, prompts, tone, a node
+  setting such as a country. A list is one string, one item per line or comma-separated.
+- The first Code node after it checks it, and fails before any Reduck node runs.
   Example: `throw new Error('Config: set from and to as YYYY-MM-DD.')`.
-- Every value the user writes is in Config, prompts and tone included.
 
 **Repeated runs**
 - Nothing to do: a Code node returns `[]`. The run ends with no error.
-- A write (book, post, send) comes after a check that it is still needed.
+- To know what is done, read the earlier results first. A read that finds no row ends the run,
+  unless the node has `alwaysOutputData`.
+- A write (book, post, send, a row) comes after a check that it is still needed.
   Example: Doctolib books only when no upcoming appointment with these doctors exists.
-- A write that failed: say in the notes how to retry it.
+- A write that failed: the notes say how to retry it.
 
 **Each Reduck node**
 - The node's latest `typeVersion`, `simplify: true`, `credentials: {}`, script **By Address**
-  (`reduck/<host>/<slug>`).
-- The browser on purpose: `""` (managed, with `region`, and `country` when the site varies by
-  country) to read public pages; `extension` (the user's Chrome) when it needs their account.
+  (`reduck/<host>/<slug>`). An upgrade changes the defaults (authentication, browser) and the
+  output (`simplify`): set them explicitly, and fix the expressions after the node.
+- The browser on purpose: `""` (managed) or `extension` (the user's Chrome, for their accounts).
+  The script's contract (`read_script`: its note and its success per browser) says which one
+  works, and whether a managed browser needs a `country`.
 - A node note says where it runs and why. Example: "Your paired Chrome: Reddit blocks managed
   browsers."
 - One credential: **Connect to Reduck** in one node, and n8n adds it to the others.
 
-**The overview note** has the structure n8n's sticky-note page gives. Its `### Setup` adds:
-- the package `@reduck-ai/n8n-nodes-reduck`, the version tested, self-hosted n8n only, and the
-  link https://docs.reduck.ai/n8n/#quick-start;
-- the Reduck account, and Connect to Reduck in one node;
-- for `extension` nodes: the extension, the sites to sign in to, and Chrome kept open;
-- each Config field, with an example;
-- when the first run acts for real: "This is not a test."
-
-Limits go in the note too: what the user pays (managed runs, model calls), what a site can refuse.
+**Notes**
+- Overview: yellow (no `color`), top-left. Section notes: white (`color: 7`).
+- The overview has the structure of n8n's sticky-note page. Its `### Setup` adds, one line each:
+  - the package `@reduck-ai/n8n-nodes-reduck`, the n8n and node versions it ran on, self-hosted
+    n8n only, https://docs.reduck.ai/n8n/#quick-start;
+  - the Reduck account, and Connect to Reduck in one node;
+  - for `extension` nodes: the extension, the sites to sign in to, Chrome kept open;
+  - each Config field, with an example;
+  - when the first run acts for real: "This is not a test."
+- Limits, in a line or two at the end of `### How it works`: what the user pays (managed runs,
+  model calls), what a site can refuse. The word limit is tight: say each thing once.
 
 **Forms** need a `webhookId` per node: the editor adds it, an import does not.
 
@@ -80,22 +89,16 @@ Limits go in the note too: what the user pays (managed runs, model calls), what 
 
 ## Test it
 
-1. `node check.mjs <file>` (in this folder): every rule a script can verify, read live from n8n's
-   page and the node's code. Zero problems. When it says a rule could not be read, fix the
-   check, not the workflow.
-2. A fresh n8n: empty database, the node from npm, a port of its own (5692: `/init_n8n` gives
-   the ports of the other two).
-   ```bash
-   F=<scratchpad>/n8n-fresh; mkdir -p $F/.n8n/nodes
-   (cd $F/.n8n/nodes && nvm exec 24 npm install @reduck-ai/n8n-nodes-reduck@<version>)
-   N8N_USER_FOLDER=$F N8N_PORT=5692 N8N_HOST=127.0.0.1 N8N_LISTEN_ADDRESS=127.0.0.1 \
-     N8N_EDITOR_BASE_URL=http://127.0.0.1:5692 N8N_RUNNERS_BROKER_PORT=5693 \
-     N8N_SECURE_COOKIE=false nvm exec 24 n8n start
-   ```
-   Owner via `POST /rest/owner/setup` (a generated password, kept in that folder), then
-   `n8n import:workflow`.
+The scripts are in this folder.
+
+1. `node check.mjs <file>`: every rule a script can verify, read live from n8n's page and the
+   node's code. Zero problems. When it says a rule could not be read, fix the check, not the
+   workflow.
+2. `./fresh-n8n.sh up <node version>`, then `./fresh-n8n.sh import <file>`: an empty n8n with the
+   node from npm, and the workflow in it with a Reduck credential set. Its login is in the file it
+   names.
 3. Set it up from the notes alone. A step you had to guess is a step to rewrite.
 4. Run it, and check the result where it lands. A run that writes for real needs the user's go:
-   say what it does, and as which account.
-5. The picture: this canvas, credential set, pointer off it.
-6. Stop that n8n, delete its folder. Note the n8n and node versions tested in the overview note.
+   say what it does, and as which account. A workflow that has not run does not ship.
+5. The picture: that canvas, pointer off it.
+6. `./fresh-n8n.sh down`.

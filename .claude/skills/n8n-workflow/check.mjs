@@ -75,7 +75,8 @@ for (const file of process.argv.slice(2)) {
 		if (n.typeVersion !== LATEST) say(n.name, `typeVersion ${n.typeVersion}, latest is ${LATEST}`);
 		if (JSON.stringify(n.credentials ?? null) !== '{}') say(n.name, 'credentials must be {}');
 		if (p.script?.mode !== 'address') say(n.name, 'script not in By Address mode');
-		if (p.deviceId === undefined) say(n.name, 'no browser set');
+		// A device id is one user's own browser: a shared workflow names a kind of browser.
+		if (!['', 'extension'].includes(p.deviceId)) say(n.name, `browser ${JSON.stringify(p.deviceId)}: set "" (managed) or "extension"`);
 		if (p.simplify !== true) say(n.name, 'simplify is not true');
 		if (!n.notes) say(n.name, 'no node note saying where it runs');
 	}
