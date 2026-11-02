@@ -163,6 +163,48 @@ Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/
   its **Config** node and select a Google Gemini credential in its **Pre-screen** and **Decide and
   draft** nodes.
 
+## n8n Cloud
+
+n8n Cloud installs only the community nodes that n8n has verified, and this node is not
+verified yet. On n8n Cloud, run your scripts with nodes that n8n has: a converter changes each
+Reduck node of a workflow into two nodes.
+
+- **`<name> request`**, an HTTP Request node, starts the run and waits for it.
+- **`<name>`**, a Code node, gives the same item and the same errors as the Reduck node. It
+  keeps the name, so the nodes after it do not change.
+
+1. Download the workflow to a file (**Download** in the workflow menu), for example
+   `workflow.json`.
+2. Convert it:
+
+   ```bash
+   curl -sO https://raw.githubusercontent.com/reduck-ai/n8n-nodes-reduck/main/convert/convert.mjs
+   node convert.mjs --to http < workflow.json > workflow-http.json
+   ```
+
+   The converter writes each node it converts, and each node it keeps with the reason.
+3. Import `workflow-http.json` in n8n Cloud. In each HTTP Request node, select a credential:
+   - For a node that used an API key: a **Header Auth** credential, with the name `X-API-Key`
+     and your [API key](https://reduck.ai/api-keys) as the value.
+   - For a node that used OAuth2: an **OAuth2 API** credential, with **Use Dynamic Client
+     Registration** on and the server URL `https://reduck.ai`.
+
+To go back to Reduck nodes, for example when n8n verifies this node, use `--to reduck`. A pair
+that you edited after the conversion stays as it is.
+
+Some nodes stay Reduck nodes, because an HTTP Request node cannot do what they do:
+
+- A script or a browser that comes from an expression.
+- A file input: n8n Cloud gives no file to an expression.
+- A node that an AI agent uses as a tool.
+
+A converted node also has these differences:
+
+- A run that takes more than 55 seconds fails: reduck.ai closes a request after 60 seconds. The
+  run continues, and the error gives its link. The Reduck node waits for the run until it ends.
+- On the error output (**Continue (using error output)**), the item has the fields of the
+  Reduck answer, not those of the item that came into the node.
+
 ## FAQ
 
 <details>
