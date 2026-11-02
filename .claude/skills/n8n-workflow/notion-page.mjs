@@ -1,14 +1,10 @@
 #!/usr/bin/env node
 // Prints a public Notion page as Markdown, through the API notion.site pages load themselves from.
 // The skills inject n8n's own pages with it, so they read n8n's current rules, never a copy.
-// Usage: node notion-page.mjs <page id or notion.site url>
-const arg = process.argv[2];
-const hex = arg?.match(/[0-9a-f]{32}(?=[^0-9a-f]*$)/i)?.[0] ?? arg?.replace(/-/g, '');
-if (!hex || hex.length !== 32) {
-	console.error('Usage: node notion-page.mjs <page id or notion.site url>');
-	process.exit(1);
-}
-const pageId = hex.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
+// Usage: node notion-page.mjs <page id or notion.site url>, or import { pageMarkdown }.
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 const API = 'https://n8n.notion.site/api/v3';
 
 const post = async (path, body) => {
@@ -23,6 +19,11 @@ const post = async (path, body) => {
 
 // A record is wrapped once or twice depending on the endpoint.
 const unwrap = (rec) => rec?.value?.value ?? rec?.value;
+
+export async function pageMarkdown(page) {
+const hex = page?.match(/[0-9a-f]{32}(?=[^0-9a-f]*$)/i)?.[0] ?? page?.replace(/-/g, '');
+if (!hex || hex.length !== 32) throw new Error(`Not a Notion page id: ${page}`);
+const pageId = hex.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
 const blocks = {};
 let cursor = { stack: [] };
 for (let chunk = 0; chunk < 20; chunk++) {
@@ -84,4 +85,14 @@ const render = (id, depth, n) => {
 };
 render(pageId, -1, 0);
 if (missing.length) lines.push('', `(${missing.length} blocks of this page were not sent by Notion: read the page itself.)`);
-console.log(lines.join('\n').replace(/\n{3,}/g, '\n\n').trim());
+return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+if (realpathSync(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
+	pageMarkdown(process.argv[2])
+		.then((md) => console.log(md))
+		.catch((e) => {
+			console.error(e.message);
+			process.exit(1);
+		});
+}

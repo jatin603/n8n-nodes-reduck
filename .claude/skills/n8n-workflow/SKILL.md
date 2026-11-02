@@ -56,7 +56,7 @@ description: |
 - A write that failed: say in the notes how to retry it.
 
 **Each Reduck node**
-- `typeVersion` 1.2, `simplify: true`, `credentials: {}`, script **By Address**
+- The node's latest `typeVersion`, `simplify: true`, `credentials: {}`, script **By Address**
   (`reduck/<host>/<slug>`).
 - The browser on purpose: `""` (managed, with `region`, and `country` when the site varies by
   country) to read public pages; `extension` (the user's Chrome) when it needs their account.
@@ -64,7 +64,7 @@ description: |
   browsers."
 - One credential: **Connect to Reduck** in one node, and n8n adds it to the others.
 
-**The overview note**, in n8n's three headings, 100 to 300 words. Under `### Setup`:
+**The overview note** has the structure n8n's sticky-note page gives. Its `### Setup` adds:
 - the package `@reduck-ai/n8n-nodes-reduck`, the version tested, self-hosted n8n only, and the
   link https://docs.reduck.ai/n8n/#quick-start;
 - the Reduck account, and Connect to Reduck in one node;
@@ -80,9 +80,11 @@ Limits go in the note too: what the user pays (managed runs, model calls), what 
 
 ## Test it
 
-1. `node check.mjs <file>` (in this folder): the checks a script can do. Zero problems.
-2. A fresh n8n: empty database, the node from npm, its own port (5692; the dev n8n is 5678, the
-   clean one 5690).
+1. `node check.mjs <file>` (in this folder): every rule a script can verify, read live from n8n's
+   page and the node's code. Zero problems. When it says a rule could not be read, fix the
+   check, not the workflow.
+2. A fresh n8n: empty database, the node from npm, a port of its own (5692: `/init_n8n` gives
+   the ports of the other two).
    ```bash
    F=<scratchpad>/n8n-fresh; mkdir -p $F/.n8n/nodes
    (cd $F/.n8n/nodes && nvm exec 24 npm install @reduck-ai/n8n-nodes-reduck@<version>)

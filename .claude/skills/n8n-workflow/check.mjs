@@ -3,14 +3,29 @@
 // pages. Prints one line per problem and exits 1 when there is one.
 // Usage: node check.mjs <workflow.json> [more.json ...]
 import { readFileSync } from 'node:fs';
+import { pageMarkdown } from './notion-page.mjs';
 
 const REDUCK = '@reduck-ai/n8n-nodes-reduck.reduck';
-const LATEST = 1.2;
-// n8n's "Add sticky notes to templates": the overview note's headings and length, a section note's
-// length. Re-read that page when it changes (the skill loads it).
-const HEADINGS = ['### How it works', '### Setup'];
-const OVERVIEW_WORDS = [100, 300];
-const SECTION_WORDS = 50;
+
+// Each rule is read from where it is decided, never copied here: a copy goes stale silently, a
+// rule that can no longer be read stops the check and says where to look.
+const source = (what, where) => {
+	throw new Error(`Could not read ${what} from ${where}: it changed. Update check.mjs to read it again.`);
+};
+// The latest node version: the node's own description.
+const nodeTs = readFileSync(new URL('../../../nodes/Reduck/Reduck.node.ts', import.meta.url), 'utf8');
+const versions = nodeTs.match(/version:\s*\[([^\]]+)\]/)?.[1].split(',').map(Number) ?? source('the node versions', 'Reduck.node.ts');
+const LATEST = Math.max(...versions);
+// The notes: n8n's "Add sticky notes to templates" page.
+const STICKY = '2aa5b6e0c94f8058b0aefddd02655887';
+const sticky = await pageMarkdown(STICKY);
+const where = `https://n8n.notion.site/${STICKY}`;
+const NUMBERS = { two: 2, three: 3, four: 4, five: 5, six: 6 };
+const OVERVIEW_WORDS = sticky.match(/from (\d+) to (\d+) words/)?.slice(1).map(Number) ?? source('the overview length', where);
+const HEADINGS = [...sticky.matchAll(/^- `(###[^`]+)`: (?!Optionally)/gm)].map((m) => m[1]);
+if (!HEADINGS.length) source('the overview headings', where);
+const SECTION_WORDS = Number(sticky.match(/note under (\d+) words/)?.[1] ?? source('the section note length', where));
+const SECTION_FROM = NUMBERS[sticky.match(/with (\w+) or more nodes/)?.[1]] ?? source('when section notes are needed', where);
 // Values of our own accounts and market that must not ship.
 const OURS = /reduck\.ai\/runs|daniel@|conception\.dev|\b(mcp|n8n)\s*,\s*(mcp|n8n)\b/i;
 
@@ -48,7 +63,7 @@ for (const file of process.argv.slice(2)) {
 			if (!c.includes(must)) say(n.name, `does not say "${must}"`);
 	}
 	const sections = notes.filter((n) => !overview.includes(n));
-	if (work.length >= 4 && !sections.length) say('notes', `${work.length} nodes and no section note`);
+	if (work.length >= SECTION_FROM && !sections.length) say('notes', `${work.length} nodes and no section note`);
 	for (const n of sections) if (words(n) >= SECTION_WORDS) say(n.name, `${words(n)} words, a section note stays under ${SECTION_WORDS}`);
 
 	if (!names.has('Config')) say('Config', 'no node named Config');
