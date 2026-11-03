@@ -75,7 +75,7 @@ jobs:
           npx release-it "$INCREMENT" --ci \
             --git.requireBranch=main \
             --git.requireCommitsFail=false \
-            --git.changelog='npx auto-changelog --stdout --unreleased --commit-limit false -u --hide-credit' \
+            --git.changelog='npx auto-changelog --stdout --unreleased-only' \
             --hooks.before:init='npm run lint && npm run build' \
             --hooks.after:bump='npx auto-changelog -p' \
             --github.release \

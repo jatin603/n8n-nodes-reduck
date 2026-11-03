@@ -1,4 +1,6 @@
 {
   "ignoreCommitPattern": "^(Release \\d|(docs|chore|ci|build|style|test|refactor)(\\(.+\\))?:)",
-  "hideEmptyReleases": true
+  "hideEmptyReleases": true,
+  "commitLimit": false,
+  "hideCredit": true
 }
