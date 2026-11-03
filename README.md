@@ -130,6 +130,9 @@ Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/
 - [ChatGPT brand monitoring](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/chatgpt-brand-visibility.json):
   ask ChatGPT your buyers' questions daily, then record if each answer cites your site, names
   you, or cites other sites.
+
+  ![The ChatGPT brand monitoring workflow in n8n: a schedule, a check of the settings and of the ChatGPT account, then one Reduck run for each question, a verdict and one row in a data table](https://raw.githubusercontent.com/reduck-ai/n8n-nodes-reduck/main/images/chatgpt-brand-visibility-workflow.png)
+
 - [Google AI Overview API](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/google-ai-overview-webhook.json):
   call a webhook with a search, then get Google's AI Overview and the pages it cites as JSON.
 - [Reddit monitoring](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/reddit-engage.json):
