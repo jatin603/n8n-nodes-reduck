@@ -39,7 +39,7 @@ A script runs in a browser. You choose which one in the node's **Browser** field
   computer.
 
 > [!NOTE]
-> A managed browser does not store any credentials and starts fresh, so it can only read public pages. We will provide cookie storage and reuse soon to allow to run scripts with managed browsers.
+> A managed browser does not store any credentials and starts fresh, so it can only read public pages. The node does not run a script that requires login on it. We will provide cookie storage and reuse soon to allow to run scripts with managed browsers.
 
 To choose between the two, see the [FAQ](#faq).
 
@@ -49,7 +49,7 @@ To choose between the two, see the [FAQ](#faq).
 - A [Reduck account](https://reduck.ai/#signin).
 - The [Reduck extension](https://chromewebstore.google.com/detail/reduck/koccidjchcojlmgkdhibpgjbnhcoopio),
   paired with your account (see [pairing](https://docs.reduck.ai/#quick-start)). Scripts run on
-  this browser by default. To run without it, set **Browser** to **Reduck Managed Browser**.
+  this browser by default. To run without it, set **Browser** to **Managed Browser**.
 
 ## Quick start
 
@@ -109,13 +109,10 @@ To choose between the two, see the [FAQ](#faq).
    [n8n guide](https://docs.n8n.io/integrations/community-nodes/installation/).
 
 2. **Sign in.** Add a **Reduck** node to a workflow. In **Credential**, select **Connect to
-   Reduck**, then **Connect**, and approve n8n on Reduck. If **Browser** then shows an error,
-   close the node and open it again.
+   Reduck**, then select **Authorize** on Reduck.
 
-   ![The new Reduck OAuth2 API credential, with its Connect button](https://raw.githubusercontent.com/reduck-ai/n8n-nodes-reduck/main/images/quick-start-connect.png)
-
-   To use an API key instead, create a **Reduck API** credential with a key from
-   [API keys](https://reduck.ai/api-keys), and select it in **Credential**.
+   To use an API key instead, in **Credential**, select **Create new credential**, set
+   **API Key**, and paste a key from [API keys](https://reduck.ai/api-keys).
 
 3. **Run a script.** In **Script**, search `ai overview` and select **Get Google AI Overview**.
    In **query**, type a search, for example `best crm for small business`. Then select

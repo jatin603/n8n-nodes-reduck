@@ -18,6 +18,15 @@ export class ReduckOAuth2Api implements ICredentialType {
 	documentationUrl = 'https://docs.reduck.ai/n8n/#credentials';
 
 	properties: INodeProperties[] = [
+		// n8n's allowlist for this credential in the HTTP Request node, inherited from oAuth2Api
+		// (so hideDomainRestrictionFields does not remove it). The Reduck node only calls the
+		// credential's own Reduck URL, which the list never blocks, so the field would only add noise.
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'hidden',
+			default: 'all',
+		},
 		{
 			displayName: 'Use Dynamic Client Registration',
 			name: 'useDynamicClientRegistration',

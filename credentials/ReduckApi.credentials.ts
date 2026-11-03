@@ -15,6 +15,10 @@ export class ReduckApi implements ICredentialType {
 
 	documentationUrl = 'https://docs.reduck.ai/n8n/#credentials';
 
+	// n8n's allowlist for this credential in the HTTP Request node. The Reduck node only calls the
+	// credential's own Reduck URL, which the list never blocks, so the field would only add noise.
+	hideDomainRestrictionFields = true;
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -26,12 +30,12 @@ export class ReduckApi implements ICredentialType {
 			description:
 				'Create one in the Reduck dashboard, under <a href="https://reduck.ai/api-keys" target="_blank">API keys</a>',
 		},
+		// Another Reduck environment, for our tests, is set where the credential is imported.
 		{
 			displayName: 'Reduck URL',
 			name: 'url',
-			type: 'string',
+			type: 'hidden',
 			default: 'https://reduck.ai',
-			description: 'Change it only to test against another Reduck environment',
 		},
 	];
 

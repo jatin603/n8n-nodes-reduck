@@ -66,6 +66,9 @@ export function parseScriptAddress(address: string): { handle: string; host: str
 	return { handle, host, slug };
 }
 
+export const scriptPath = ({ handle, host, slug }: { handle: string; host: string; slug: string }) =>
+	`/api/scripts/${[handle, host, slug].map(encodeURIComponent).join('/')}`;
+
 // The parts of a run this package reads (GET /api/runs/{run_id} answers more).
 export interface Run {
 	id: string;

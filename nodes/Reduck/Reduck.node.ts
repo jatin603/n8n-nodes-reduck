@@ -6,13 +6,14 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
 	type JsonObject,
 } from 'n8n-workflow';
 
-import { FILE_FIELD, PAIRED_BROWSER, getDevices, getScriptArgs, searchScripts } from './methods';
-import { parseScriptAddress, reduckRequest, reduckUrl, type Run } from './transport';
+import { FILE_FIELD, PAIRED_BROWSER, getDevices, getScriptArgs, searchScripts, type Script } from './methods';
+import { parseScriptAddress, reduckRequest, reduckUrl, scriptPath, type Run } from './transport';
 
 const POLL_MS = 2000;
 // The managed browser's budget, and 10 runs of 3 minutes on a 2-slot device still start inside the
@@ -31,13 +32,40 @@ const AUTHENTICATIONS = [
 	{ name: 'API Key', value: 'apiKey' },
 ];
 
+// The managed browser's own options. The API refuses them on a paired browser, so they show only
+// while the managed browser is chosen. The regions are the API's (MANAGED_REGIONS in the MCP's
+// browser.ts); it refuses any other and names the ones it has.
+const REGION: INodeProperties = {
+	displayName: 'Region',
+	name: 'region',
+	type: 'options',
+	options: [
+		{ name: 'Asia Pacific (Singapore)', value: 'ap-southeast-1' },
+		{ name: 'Europe (Frankfurt)', value: 'eu-central-1' },
+		{ name: 'US East', value: 'us-east-1' },
+		{ name: 'US West', value: 'us-west-2' },
+	],
+	default: 'eu-central-1',
+	description:
+		'The datacenter of the managed browser: Europe (Frankfurt) by default. Choose the one nearest to the site.',
+};
+const COUNTRY: INodeProperties = {
+	displayName: 'Country',
+	name: 'country',
+	type: 'string',
+	default: '',
+	placeholder: 'e.g. FR',
+	description:
+		'The ISO 3166 alpha-2 code of the country the managed browser connects to the site from, through a residential proxy. Use it for a site that changes by country. Leave it empty to connect from the datacenter.',
+};
+
 export class Reduck implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Reduck',
 		name: 'reduck',
 		icon: { light: 'file:reduck.svg', dark: 'file:reduck.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		subtitle: '={{$parameter["script"].value}}',
 		description: 'Run Reduck browser scripts on any website',
 		defaults: { name: 'Reduck' },
@@ -59,7 +87,8 @@ export class Reduck implements INodeType {
 		properties: [
 			// n8n saves no parameter that equals its default, so a node saved with the default holds no
 			// value here and reads whatever the default is now. Version 1 keeps API Key for those
-			// nodes; a node added from 1.1 on starts with OAuth2.
+			// nodes; a node added from 1.1 on starts with OAuth2. The versions are listed, not a
+			// `_cnd`: n8n's credential window offers OAuth2 or API Key only from a literal list.
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -74,7 +103,7 @@ export class Reduck implements INodeType {
 				type: 'options',
 				options: AUTHENTICATIONS,
 				default: 'oAuth2',
-				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+				displayOptions: { show: { '@version': [1.1, 1.2, 1.3, 1.4] } },
 			},
 			// The one thing the node does. It names the action that the nodes panel and an AI agent show.
 			{
@@ -169,36 +198,45 @@ export class Reduck implements INodeType {
 				default: PAIRED_BROWSER,
 				description:
 					'Where the script runs: your paired browser (the Reduck extension), one of them by name when you have several, or a Reduck managed browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+				displayOptions: { show: { '@version': [1.1, 1.2, 1.3] } },
 			},
-			// The managed browser's own options. The API refuses them on a paired browser, so they show
-			// only while the managed browser is chosen. The regions are the API's (MANAGED_REGIONS in the
-			// MCP's browser.ts); it refuses any other and names the ones it has.
+			{ ...REGION, displayOptions: { show: { deviceId: [''] } } },
+			{ ...COUNTRY, displayOptions: { show: { deviceId: [''] } } },
+			// From 1.4 on, the browser comes first, as the API's `browser`, then what fits it: the
+			// device, or the managed browser's options. Up to 1.3, Browser Name or ID holds both, and
+			// '' is the managed browser.
 			{
-				displayName: 'Region',
-				name: 'region',
+				displayName: 'Browser',
+				name: 'browser',
 				type: 'options',
 				options: [
-					{ name: 'Asia Pacific (Singapore)', value: 'ap-southeast-1' },
-					{ name: 'Europe (Frankfurt)', value: 'eu-central-1' },
-					{ name: 'US East', value: 'us-east-1' },
-					{ name: 'US West', value: 'us-west-2' },
+					{
+						name: 'Paired Browser',
+						value: PAIRED_BROWSER,
+						description: 'Your Chrome with the Reduck extension. Chrome must be open.',
+					},
+					{
+						name: 'Managed Browser',
+						value: 'managed',
+						description: 'A browser that Reduck hosts. It runs without your computer.',
+					},
 				],
-				default: 'eu-central-1',
-				description:
-					'The datacenter of the managed browser: Europe (Frankfurt) by default. Choose the one nearest to the site.',
-				displayOptions: { show: { deviceId: [''] } },
+				default: PAIRED_BROWSER,
+				description: 'Where the script runs',
+				displayOptions: { show: { '@version': [1.4] } },
 			},
 			{
-				displayName: 'Country',
-				name: 'country',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. FR',
+				displayName: 'Device Name or ID',
+				name: 'deviceId',
+				type: 'options',
+				typeOptions: { loadOptionsMethod: 'getDevices' },
+				default: PAIRED_BROWSER,
 				description:
-					'The ISO 3166 alpha-2 code of the country the managed browser connects to the site from, through a residential proxy. Use it for a site that changes by country. Leave it empty to connect from the datacenter.',
-				displayOptions: { show: { deviceId: [''] } },
+					'The paired device to run on. Choose one by name when you have more than one. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				displayOptions: { show: { browser: [PAIRED_BROWSER] } },
 			},
+			{ ...REGION, displayOptions: { show: { browser: ['managed'] } } },
+			{ ...COUNTRY, displayOptions: { show: { browser: ['managed'] } } },
 			// Versions 1 and 1.1 return the whole run, which their saved nodes keep (see
 			// Authentication). From 1.2 on, a node starts with the simplified item.
 			{
@@ -250,9 +288,10 @@ export class Reduck implements INodeType {
 
 		// One request has one browser target, and stays under the API's 4.5 MB: a file goes alone.
 		const groups = new Map<string, ItemRun[]>();
+		const loggedIn = new Map<string, Promise<boolean>>();
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const item = await itemRunOf(this, i);
+				const item = await itemRunOf(this, i, loggedIn);
 				const key = size === 1 || item.script.files ? `item ${i}` : JSON.stringify(item.target);
 				groups.set(key, [...(groups.get(key) ?? []), item]);
 			} catch (error) {
@@ -315,7 +354,12 @@ async function runBatch(ctx: IExecuteFunctions, items: ItemRun[]): Promise<Run[]
 	return runs;
 }
 
-async function itemRunOf(ctx: IExecuteFunctions, i: number): Promise<ItemRun> {
+// `loggedIn` holds whether each script needs a sign-in, read once per execution.
+async function itemRunOf(
+	ctx: IExecuteFunctions,
+	i: number,
+	loggedIn: Map<string, Promise<boolean>>,
+): Promise<ItemRun> {
 	const address = ctx.getNodeParameter('script', i, '', { extractValue: true }) as string;
 	const script = parseScriptAddress(address);
 	if (!script) {
@@ -340,7 +384,24 @@ async function itemRunOf(ctx: IExecuteFunctions, i: number): Promise<ItemRun> {
 		const bytes = await ctx.helpers.getBinaryDataBuffer(i, property);
 		files[key.slice(FILE_FIELD.length)] = { b64: bytes.toString('base64'), mime: mimeType };
 	}
-	const deviceId = ctx.getNodeParameter('deviceId', i, '') as string;
+	// '' is the managed browser, which from 1.4 on is chosen in Browser.
+	const deviceId =
+		ctx.getNodeParameter('browser', i, '') === 'managed'
+			? ''
+			: (ctx.getNodeParameter('deviceId', i, '') as string);
+	// A managed browser has no sign-in yet, so a script that needs one fails there.
+	if (!deviceId) {
+		if (!loggedIn.has(address))
+			loggedIn.set(
+				address,
+				reduckRequest<Script>(ctx, 'GET', scriptPath(script)).then((s) => !!s.current_version?.logged_in),
+			);
+		if (await loggedIn.get(address))
+			throw new NodeOperationError(ctx.getNode(), 'Managed runs are not supported yet for scripts that require login', {
+				itemIndex: i,
+				description: 'Run it on a paired browser instead.',
+			});
+	}
 	const region = ctx.getNodeParameter('region', i, '') as string;
 	const country = (ctx.getNodeParameter('country', i, '') as string).trim();
 
