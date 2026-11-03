@@ -83,6 +83,15 @@ description: |
 - Limits, in a line or two at the end of `### How it works`: what the user pays (managed runs,
   model calls), what a site can refuse. The word limit is tight: say each thing once.
 
+**Layout**
+- The canvas is the first thing a user sees, and the picture shows it: the layout matters as much
+  as the notes.
+- Left to right, one section note per step, with its nodes inside it.
+- A long flow goes on two rows when that looks better than one wide row. Row 2 starts under row 1,
+  with a gap for the wire that goes back. Example: `chatgpt-brand-visibility.json`.
+- The layout is the `position` of each node and the `width` and `height` of each note, in the
+  JSON. Change only those, then look at the canvas.
+
 **Forms** need a `webhookId` per node: the editor adds it, an import does not.
 
 **Text** that a user reads (notes, errors, forms, prompts): ASD-STE100, no em-dash.
