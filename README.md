@@ -18,6 +18,8 @@ Reduck solves this by making it easy to automate sites with no API by writing br
 
 ![An n8n workflow with two Reduck nodes: every morning, it checks the settings and the ChatGPT account, asks ChatGPT each question in your Chrome, gives each answer a verdict and saves it in a data table](https://raw.githubusercontent.com/reduck-ai/n8n-nodes-reduck/main/images/chatgpt-brand-visibility-two-rows.png)
 
+<p align="center"><em>Example of a workflow with Reduck for n8n to monitor brand visibility on a signed-in ChatGPT account with memory off</em></p>
+
 With Reduck you can:
 
 - Find LinkedIn profiles, qualify them and send connection requests.
