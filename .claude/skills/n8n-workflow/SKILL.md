@@ -74,8 +74,8 @@ description: |
 **Notes**
 - Overview: yellow (no `color`), top-left. Section notes: white (`color: 7`).
 - The overview has the structure of n8n's sticky-note page. Its `### Setup` adds, one line each:
-  - the package `@reduck-ai/n8n-nodes-reduck`, the n8n and node versions it ran on, self-hosted
-    n8n only, https://docs.reduck.ai/n8n/#quick-start;
+  - the package `@reduck-ai/n8n-nodes-reduck`, with no version: the user installs the latest,
+    self-hosted n8n only, https://docs.reduck.ai/n8n/#quick-start;
   - the Reduck account, and Connect to Reduck in one node;
   - for `extension` nodes: the extension, the sites to sign in to, Chrome kept open;
   - each Config field, with an example;
