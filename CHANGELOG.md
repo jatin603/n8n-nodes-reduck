@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.22](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.21...0.2.22)
+
+- fix(credentials): the first Connect to Reduck opens the credential window, where API Key is chosen [`4160d08`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/4160d087e5947dc78c840c7e29906159c62b9111)
+
 #### [0.2.21](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.20...0.2.21)
+
+> 3 November 2026
 
 - feat(node): the browser comes first, and a credential is an OAuth sign-in or an API key [`2cd8a8d`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/2cd8a8d7b0bee9668a1bd11b2ba254b7cfd493d5)
 
