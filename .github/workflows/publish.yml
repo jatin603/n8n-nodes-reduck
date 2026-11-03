@@ -66,6 +66,8 @@ jobs:
 
       # Lint and build come first: a failure stops the run before anything is pushed. With no
       # commit since the last release, release-it stops without failing and pushes nothing.
+      # The changelog and the GitHub release list only what changes for users: .auto-changelog
+      # drops docs, chore and the like, and a release with nothing else.
       - name: Bump, changelog, commit, tag and GitHub release
         run: |
           git config user.name 'github-actions[bot]'
