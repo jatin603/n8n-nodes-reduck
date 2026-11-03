@@ -239,19 +239,22 @@
           "mappingMode": "defineBelow",
           "matchingColumns": []
         },
-        "region": "eu-central-1",
         "script": {
           "__rl": true,
           "mode": "address",
           "value": "reduck/doctolib.fr/list_slots"
         },
-        "country": "FR",
-        "deviceId": "",
+        "browser": "managed",
+        "options": {
+          "region": "eu-central-1",
+          "country": "FR"
+        },
+        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},
       "notesInFlow": true,
-      "typeVersion": 1.2
+      "typeVersion": 1
     },
     {
       "id": "earliest-slot",
@@ -288,12 +291,14 @@
           "mode": "address",
           "value": "reduck/doctolib.fr/list_appointments"
         },
+        "browser": "extension",
         "deviceId": "extension",
+        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},
       "notesInFlow": true,
-      "typeVersion": 1.2
+      "typeVersion": 1
     },
     {
       "id": "not-booked-yet",
@@ -382,12 +387,14 @@
           "mode": "address",
           "value": "reduck/doctolib.fr/book_appointment"
         },
+        "browser": "extension",
         "deviceId": "extension",
+        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},
       "notesInFlow": true,
-      "typeVersion": 1.2
+      "typeVersion": 1
     },
     {
       "id": "email",
@@ -452,12 +459,14 @@
           "mode": "address",
           "value": "reduck/mail.google.com/send_email"
         },
+        "browser": "extension",
         "deviceId": "extension",
+        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},
       "notesInFlow": true,
-      "typeVersion": 1.2
+      "typeVersion": 1
     }
   ],
   "settings": {

@@ -4,7 +4,7 @@
 	"nodes": [
 		{
 			"parameters": {
-				"content": "## Google AI Overview, on a webhook\n\nCall `GET /webhook/ai-overview?q=<search>` and get the AI Overview Google shows for that search as JSON: its answer as Markdown and the pages it cites.\n\nThe Reduck node runs the script `reduck/google.com/get_ai_overview` on a Reduck managed browser in the US (**Region**: US East). The site needs no sign-in, so you install nothing.\n\nWhen the run fails, the answer is the run with its `error`: the node's **On Error** setting is **Continue**.\n\nThe Reduck node uses the credential `reduckQuickStart`: the README's quick start makes it from your API key.",
+				"content": "## Google AI Overview, on a webhook\n\nCall `GET /webhook/ai-overview?q=<search>` and get the AI Overview Google shows for that search as JSON: its answer as Markdown and the pages it cites.\n\nThe Reduck node runs the script `reduck/google.com/get_ai_overview` on a Reduck managed browser in the US (**Options** > **Region**: US East). The site needs no sign-in, so you install nothing.\n\nWhen the run fails, the answer is the run with its `error`: the node's **On Error** setting is **Continue**.\n\nThe Reduck node uses the credential `reduckQuickStart`: the README's quick start makes it from your API key.",
 				"height": 340,
 				"width": 420
 			},
@@ -53,13 +53,14 @@
 						}
 					]
 				},
-				"deviceId": "",
-				"region": "us-east-1"
+				"browser": "managed",
+				"options": { "region": "us-east-1" },
+				"simplify": true
 			},
 			"id": "2f7c9e15-8a4d-4b6f-a3e1-7c0d5b9f2e14",
 			"name": "AI Overview",
 			"type": "@reduck-ai/n8n-nodes-reduck.reduck",
-			"typeVersion": 1.1,
+			"typeVersion": 1,
 			"position": [240, 0],
 			"onError": "continueRegularOutput",
 			"credentials": {

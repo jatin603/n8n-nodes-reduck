@@ -61,12 +61,13 @@ description: |
 - A write that failed: the notes say how to retry it.
 
 **Each Reduck node**
-- The node's latest `typeVersion`, `simplify: true`, `credentials: {}`, script **By Address**
-  (`reduck/<host>/<slug>`). An upgrade changes the defaults (authentication, browser) and the
-  output (`simplify`): set them explicitly, and fix the expressions after the node.
-- The browser on purpose: `""` (managed) or `extension` (the user's Chrome, for their accounts).
-  The script's contract (`read_script`: its note and its success per browser) says which one
-  works, and whether a managed browser needs a `country`.
+- The node's `typeVersion`, `simplify: true`, `credentials: {}`, script **By Address**
+  (`reduck/<host>/<slug>`). Set the defaults explicitly (authentication, browser, `simplify`), so
+  a change of default does not change the workflow.
+- The browser on purpose: `managed`, with `options` (`region`, `country`), or `extension` (the
+  user's Chrome, for their accounts) with `deviceId: extension` (Default). The script's contract
+  (`read_script`: its note and its success per browser) says which one works, and whether a
+  managed browser needs a `country`. A script that requires login runs only on `extension`.
 - A node note says where it runs and why. Example: "Your paired Chrome: Reddit blocks managed
   browsers."
 - One credential: **Connect to Reduck** in one node, and n8n adds it to the others.

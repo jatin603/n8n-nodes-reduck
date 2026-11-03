@@ -163,8 +163,7 @@ address in that country, not from a datacenter.
 
 Yes, each in its own browser, up to the limit of the browser, and the output stays in the order of
 the items. To run them one at a time, for example on a site that watches your pace, put a **Loop
-Over Items** node with a batch size of 1 before the Reduck node. A node that you added before
-version 1.3 of the node runs them one at a time.
+Over Items** node with a batch size of 1 before the Reduck node.
 
 </details>
 

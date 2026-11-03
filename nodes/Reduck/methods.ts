@@ -126,8 +126,7 @@ export async function getScriptArgs(this: ILoadOptionsFunctions): Promise<Resour
 // it, and refuses by name when there is none or several, listing them.
 export const PAIRED_BROWSER = 'extension';
 
-// Where a run can happen: the account's paired browser, one of them by name, or, up to 1.3, a
-// Reduck managed browser (from 1.4 on, chosen in Browser).
+// The paired browsers a run can use: the API's own pick, or one of them by name.
 export async function getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const devices = await reduckRequest<Array<{ id: string; name: string | null }>>(this, 'GET', '/api/devices');
 	return [
@@ -136,7 +135,6 @@ export async function getDevices(this: ILoadOptionsFunctions): Promise<INodeProp
 			value: PAIRED_BROWSER,
 			description: 'Your only paired browser. When you have more than one, choose one by name.',
 		},
-		...(this.getNode().typeVersion < 1.4 ? [{ name: 'Reduck Managed Browser', value: '' }] : []),
 		...devices.map((device) => ({ name: device.name ?? device.id, value: device.id })),
 	];
 }

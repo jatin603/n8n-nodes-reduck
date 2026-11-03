@@ -12,10 +12,9 @@ const REDUCK = '@reduck-ai/n8n-nodes-reduck.reduck';
 const source = (what, where) => {
 	throw new Error(`Could not read ${what} from ${where}: it changed. Update check.mjs to read it again.`);
 };
-// The latest node version: the node's own description.
+// The node version: the node's own description.
 const nodeTs = readFileSync(new URL('../../../nodes/Reduck/Reduck.node.ts', import.meta.url), 'utf8');
-const versions = nodeTs.match(/version:\s*\[([^\]]+)\]/)?.[1].split(',').map(Number) ?? source('the node versions', 'Reduck.node.ts');
-const LATEST = Math.max(...versions);
+const LATEST = Number(nodeTs.match(/\bversion: ([\d.]+),/)?.[1] ?? source('the node version', 'Reduck.node.ts'));
 // The notes: n8n's "Add sticky notes to templates" page.
 const STICKY = '2aa5b6e0c94f8058b0aefddd02655887';
 const sticky = await pageMarkdown(STICKY);
@@ -75,8 +74,9 @@ for (const file of process.argv.slice(2)) {
 		if (n.typeVersion !== LATEST) say(n.name, `typeVersion ${n.typeVersion}, latest is ${LATEST}`);
 		if (JSON.stringify(n.credentials ?? null) !== '{}') say(n.name, 'credentials must be {}');
 		if (p.script?.mode !== 'address') say(n.name, 'script not in By Address mode');
-		// A device id is one user's own browser: a shared workflow names a kind of browser.
-		if (!['', 'extension'].includes(p.deviceId)) say(n.name, `browser ${JSON.stringify(p.deviceId)}: set "" (managed) or "extension"`);
+		if (!['managed', 'extension'].includes(p.browser)) say(n.name, `browser ${JSON.stringify(p.browser)}: set "managed" or "extension"`);
+		// A device id is one user's own browser: a shared workflow keeps Default.
+		if (p.browser === 'extension' && p.deviceId !== 'extension') say(n.name, `deviceId ${JSON.stringify(p.deviceId)}: set "extension" (Default)`);
 		if (p.simplify !== true) say(n.name, 'simplify is not true');
 		if (!n.notes) say(n.name, 'no node note saying where it runs');
 	}

@@ -185,7 +185,7 @@
 			"id": "scan-community",
 			"name": "Scan community",
 			"type": "@reduck-ai/n8n-nodes-reduck.reduck",
-			"typeVersion": 1.1,
+			"typeVersion": 1,
 			"position": [
 				660,
 				300
@@ -236,7 +236,10 @@
 						}
 					]
 				},
-				"deviceId": "extension"
+				"browser": "extension",
+				"deviceId": "extension",
+				"authentication": "oAuth2",
+				"simplify": true
 			}
 		},
 		{
@@ -408,7 +411,7 @@
 			"id": "read-thread",
 			"name": "Read thread",
 			"type": "@reduck-ai/n8n-nodes-reduck.reduck",
-			"typeVersion": 1.1,
+			"typeVersion": 1,
 			"position": [
 				2080,
 				300
@@ -449,7 +452,10 @@
 						}
 					]
 				},
-				"deviceId": "extension"
+				"browser": "extension",
+				"deviceId": "extension",
+				"authentication": "oAuth2",
+				"simplify": true
 			}
 		},
 		{
@@ -828,7 +834,7 @@
 			"id": "post-comment",
 			"name": "Post comment",
 			"type": "@reduck-ai/n8n-nodes-reduck.reduck",
-			"typeVersion": 1.1,
+			"typeVersion": 1,
 			"position": [
 				1100,
 				620
@@ -869,7 +875,10 @@
 						}
 					]
 				},
-				"deviceId": "extension"
+				"browser": "extension",
+				"deviceId": "extension",
+				"authentication": "oAuth2",
+				"simplify": true
 			}
 		},
 		{
