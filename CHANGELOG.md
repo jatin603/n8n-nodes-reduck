@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.20](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.19...0.2.20)
+
+- fix(node): a saved node takes its script's new arguments when it is opened, with no outdated warning [`84f1ec5`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/84f1ec58780e1ae76e8fb588a49609342c1cf98c)
+
 #### [0.2.15](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.14...0.2.15)
 
 > 2 November 2026
