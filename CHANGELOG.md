@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.23](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.22...0.2.23)
+
+- fix: what n8n's review asks before approval [`c5c1ee6`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/c5c1ee69eb3db2e57ea1c9b54679fe06eae29b63)
+
 #### [0.2.22](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.21...0.2.22)
+
+> 3 November 2026
 
 - fix(credentials): the first Connect to Reduck opens the credential window, where API Key is chosen [`4160d08`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/4160d087e5947dc78c840c7e29906159c62b9111)
 
