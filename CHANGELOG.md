@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.21](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.20...0.2.21)
+
+- feat(node): the browser comes first, and a credential is an OAuth sign-in or an API key [`2cd8a8d`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/2cd8a8d7b0bee9668a1bd11b2ba254b7cfd493d5)
+
 #### [0.2.20](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.19...0.2.20)
+
+> 3 November 2026
 
 - fix(node): a saved node takes its script's new arguments when it is opened, with no outdated warning [`84f1ec5`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/84f1ec58780e1ae76e8fb588a49609342c1cf98c)
 
