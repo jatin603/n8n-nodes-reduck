@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.24](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.23...0.2.24)
+
+- feat!: one node version, with the browser first and Region and Country in Options [`c147104`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/c14710452d23e349f8017ca81a501629504110c3)
+
 #### [0.2.23](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.22...0.2.23)
+
+> 3 November 2026
 
 - fix: what n8n's review asks before approval [`c5c1ee6`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/c5c1ee69eb3db2e57ea1c9b54679fe06eae29b63)
 
