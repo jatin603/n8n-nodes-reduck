@@ -153,7 +153,7 @@ you.
 | Availability | Needs your browser open         | 24/7                                           |
 | Network      | Your connection                 | Datacenter, or a home address per **Country**  |
 
-If a site refuses the managed browser, set **Country**: the browser then connects from a home
+If a site refuses the managed browser, set **Country** in **Options**: the browser then connects from a home
 address in that country, not from a datacenter.
 
 </details>

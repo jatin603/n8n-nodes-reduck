@@ -16,6 +16,9 @@ import { FILE_FIELD, PAIRED_BROWSER, getDevices, getScriptArgs, searchScripts, t
 import { parseScriptAddress, reduckRequest, reduckUrl, scriptPath, type Run } from './transport';
 
 const POLL_MS = 2000;
+// Above the longest a run takes on Reduck: 16 minutes queued, then 15 held (the MCP's
+// admission.ts). A run still open after it is one Reduck lost.
+const MAX_WAIT_MINUTES = 32;
 // The managed browser's budget, and 10 runs of 3 minutes on a 2-slot device still start inside the
 // queue's 16-minute wait.
 const BATCH = 10;
@@ -235,8 +238,15 @@ export class Reduck implements INodeType {
 					'The paired device to run on. Choose one by name when you have more than one. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: { show: { browser: [PAIRED_BROWSER] } },
 			},
-			{ ...REGION, displayOptions: { show: { browser: ['managed'] } } },
-			{ ...COUNTRY, displayOptions: { show: { browser: ['managed'] } } },
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [REGION, COUNTRY],
+				displayOptions: { show: { browser: ['managed'] } },
+			},
 			// Versions 1 and 1.1 return the whole run, which their saved nodes keep (see
 			// Authentication). From 1.2 on, a node starts with the simplified item.
 			{
@@ -333,15 +343,21 @@ export class Reduck implements INodeType {
 	}
 }
 
-// Starts the runs and reads them again until they end. n8n's own workflow timeout bounds the wait.
-// The run request holds for the API's default wait, under the 60 s after which VPNs and proxies
-// drop a connection that carries no byte.
+// Starts the runs and reads them again until they end, or until MAX_WAIT_MINUTES. The run request
+// holds for the API's default wait, under the 60 s after which VPNs and proxies drop a connection
+// that carries no byte.
 async function runBatch(ctx: IExecuteFunctions, items: ItemRun[]): Promise<Run[]> {
 	const batch = await reduckRequest<{ batch_id: string; runs: Run[] }>(ctx, 'POST', '/api/runs', {
 		body: { scripts: items.map((item) => item.script), ...items[0].target },
 	});
 	let { runs } = batch;
+	const deadline = Date.now() + MAX_WAIT_MINUTES * 60_000;
 	while (runs.some((run) => run.finished_at === null)) {
+		if (Date.now() > deadline) {
+			throw new NodeOperationError(ctx.getNode(), `The runs did not end in ${MAX_WAIT_MINUTES} minutes`, {
+				description: `Their state on Reduck: ${await reduckUrl(ctx)}/runs`,
+			});
+		}
 		await sleep(POLL_MS);
 		({ data: runs } = await reduckRequest<{ data: Run[] }>(ctx, 'GET', '/api/runs', {
 			qs: { batch_id: batch.batch_id, page_size: BATCH },
@@ -402,8 +418,10 @@ async function itemRunOf(
 				description: 'Run it on a paired browser instead.',
 			});
 	}
-	const region = ctx.getNodeParameter('region', i, '') as string;
-	const country = (ctx.getNodeParameter('country', i, '') as string).trim();
+	// From 1.4 on, in Options; up to 1.3, at the top level.
+	const options = ctx.getNodeParameter('options', i, {}) as IDataObject;
+	const region = String(options.region ?? ctx.getNodeParameter('region', i, ''));
+	const country = String(options.country ?? ctx.getNodeParameter('country', i, '')).trim();
 
 	return {
 		i,
