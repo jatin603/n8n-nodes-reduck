@@ -142,6 +142,9 @@ export class Reduck implements INodeType {
 						supportAutoMap: false,
 						allowEmptyValues: true,
 						noFieldsError: 'This script takes no arguments',
+						// A script's arguments change as it is improved: a saved node takes the new ones when
+						// it is opened, with its values kept, as Refresh would do.
+						refreshStaleSchemaOnOpen: true,
 					},
 				},
 				displayOptions: { hide: { script: [''] } },
