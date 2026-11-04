@@ -142,6 +142,9 @@ you.
 - [Alert to automatic purchase](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/alert-to-purchase.json):
   receive a back-in-stock alert on a webhook, check the price and the stock, then order under your
   limits, or tell you when it needs you.
+- [Shop watch](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/shop-watch.json):
+  read a shop's listing page every few minutes, then add to your cart, or tell you, when a product
+  is new or back in stock under your price limit.
 
 ## FAQ
 

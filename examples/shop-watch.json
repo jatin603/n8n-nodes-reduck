@@ -1,0 +1,352 @@
+{
+  "id": "reduckShopWatch",
+  "name": "Shop watch, new and restocked products (Reduck)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Shop watch: new and restocked products, with Reduck\n\nEvery few minutes, this workflow reads one listing page of a shop (a category, a brand or a franchise), and compares it with what it saw the time before. When a product is new, or comes back in stock, and its price is under your limit, it adds it to the cart and posts a message to a notification webhook, or only posts the message.\n\nThe Reduck node runs `reduck/king-jouet.com/list_products` and `reduck/king-jouet.com/add_to_cart` in your own Chrome, so the shop sees a normal visitor. Nothing is paid: you finish the order yourself. To order on your own, see the example **Alert to automatic purchase**.\n\nThe first run only records what the shop shows, and sends nothing. The memory of what was seen lives in the workflow, and n8n keeps it only for the **active** workflow: activate it, do not just test it.\n\nTo watch another shop, change the two script addresses and the arguments. The **Find What Changed** step reads the fields `ref`, `name`, `url`, `price` and `available_web`.\n\nBefore you activate it: set the **Config** values, and keep **Retry On Fail** off on **Add To Cart**.",
+        "height": 560,
+        "width": 500,
+        "color": 7
+      },
+      "id": "d89a7d48-7f4a-5429-8250-a7c42c5bc659",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "17e7fa47-9e42-5a9f-a019-2370385de318",
+      "name": "Trigger Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "listing_url",
+              "name": "listing_url",
+              "type": "string",
+              "value": "https://www.king-jouet.com/jeux-jouets/jeux-societes/page1.htm"
+            },
+            {
+              "id": "max_price",
+              "name": "max_price",
+              "type": "number",
+              "value": 0
+            },
+            {
+              "id": "quantity",
+              "name": "quantity",
+              "type": "number",
+              "value": 1
+            },
+            {
+              "id": "add_to_cart",
+              "name": "add_to_cart",
+              "type": "boolean",
+              "value": true
+            },
+            {
+              "id": "notify_webhook",
+              "name": "notify_webhook",
+              "type": "string",
+              "value": ""
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "193bc262-5b54-5176-8b6f-651ec5cb5396",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/king-jouet.com/list_products"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.listing_url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "page",
+              "displayName": "page",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "5a022d66-90aa-5dd9-90e0-cbe343cc8244",
+      "name": "List Products",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compares the listing with the one seen last time. New products, and products back on the web site, under max_price, go on.\nconst cfg = $('Config').first().json;\nconst res = $input.first().json.result;\nif (!res || !Array.isArray(res.products)) throw new Error('The listing could not be read: ' + ($input.first().json.error ?? 'no result'));\nconst memory = $getWorkflowStaticData('global');\nconst before = memory.seen ?? null;\nconst now = {};\nfor (const p of res.products) now[p.ref] = p.available_web;\nmemory.seen = now;\nif (before === null) return []; // first run: only remember\nconst changed = res.products.filter((p) => p.available_web && (before[p.ref] === undefined || before[p.ref] === false));\nconst cheap = changed.filter((p) => p.price !== null && p.price <= cfg.max_price);\nreturn cheap.map((p) => ({ json: { ref: p.ref, name: p.name, url: p.url, price: p.price, is_new: before[p.ref] === undefined, tags: p.tags } }));"
+      },
+      "id": "99f9e025-f743-5d1f-84dc-aecbcb399a31",
+      "name": "Find What Changed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "f6364a2c-fd80-56f2-9bdc-9491e8c73344",
+              "leftValue": "={{ $('Config').first().json.add_to_cart }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dec97c9e-4f55-5439-b2f0-9df059703ff3",
+      "name": "Add Automatically",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/king-jouet.com/add_to_cart"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}",
+            "quantity": "={{ $('Config').first().json.quantity }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "28eed23e-4bf8-5d81-93ad-f7cb64529dc9",
+      "name": "Add To Cart",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -100
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.notify_webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: ($('Find What Changed').item.json.is_new ? 'New: ' : 'Back in stock: ') + $('Find What Changed').item.json.name + ' at ' + $('Find What Changed').item.json.price + ' EUR. ' + ($json.result ? 'Added to your cart (' + $json.result.count + ' items, ' + $json.result.total + ' EUR). ' : 'It could not be added: ' + ($json.error ?? 'unknown error') + '. ') + $('Find What Changed').item.json.url }) }}",
+        "options": {}
+      },
+      "id": "34487a75-e931-5cca-a9e4-c642c9030bc5",
+      "name": "Notify Added",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.notify_webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: ($json.is_new ? 'New: ' : 'Back in stock: ') + $json.name + ' at ' + $json.price + ' EUR. ' + $json.url }) }}",
+        "options": {}
+      },
+      "id": "47e53544-e16d-5f95-9286-807edf038b9f",
+      "name": "Notify Spotted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Trigger Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "List Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Products": {
+      "main": [
+        [
+          {
+            "node": "Find What Changed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find What Changed": {
+      "main": [
+        [
+          {
+            "node": "Add Automatically",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Automatically": {
+      "main": [
+        [
+          {
+            "node": "Add To Cart",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Spotted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add To Cart": {
+      "main": [
+        [
+          {
+            "node": "Notify Added",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
