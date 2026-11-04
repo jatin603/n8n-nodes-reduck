@@ -63,7 +63,7 @@ To choose between the two, see the [FAQ](#faq).
    mkdir -p ~/.n8n/nodes && cd ~/.n8n/nodes && npm install @reduck-ai/n8n-nodes-reduck
    ```
 
-2. **Add your API key as a credential.** Get a key from [API keys](https://reduck.ai/api-keys).
+2. **Add your API key as a credential.** Get a key from [API keys](https://reduck.ai/api-keys?utm_source=n8n&utm_medium=readme).
    n8n encrypts it when it imports the file:
 
    ```bash
@@ -112,7 +112,7 @@ To choose between the two, see the [FAQ](#faq).
    Reduck**, then **Connect**, and select **Authorize** on Reduck.
 
    To use an API key instead, set **OAuth2** to **API Key** in the same window, and paste a key
-   from [API keys](https://reduck.ai/api-keys).
+   from [API keys](https://reduck.ai/api-keys?utm_source=n8n&utm_medium=readme).
 
 3. **Run a script.** In **Script**, search `ai overview` and select **Get Google AI Overview**.
    In **query**, type a search, for example `best crm for small business`. Then select

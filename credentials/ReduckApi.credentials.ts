@@ -28,7 +28,7 @@ export class ReduckApi implements ICredentialType {
 			required: true,
 			default: '',
 			description:
-				'Create one in the Reduck dashboard, under <a href="https://reduck.ai/api-keys" target="_blank">API keys</a>',
+				'Create one in the Reduck dashboard, under <a href="https://reduck.ai/api-keys?utm_source=n8n&utm_medium=credential" target="_blank">API keys</a>',
 		},
 		// Another Reduck environment, for our tests, is set where the credential is imported.
 		{
