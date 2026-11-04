@@ -113,7 +113,6 @@ export class Reduck implements INodeType {
 						name: 'address',
 						type: 'string',
 						placeholder: 'e.g. google.com/get_ai_overview',
-						hint: "The site and the script of the Handle's owner, or of yours with Any. To name another owner, put its handle first: reduck/google.com/get_ai_overview.",
 						validation: [
 							{
 								type: 'regex',
