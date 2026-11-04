@@ -1,0 +1,549 @@
+{
+  "id": "reduckShopAlertWatch",
+  "name": "Shop alert and watch, to your cart (Reduck)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Shop alert and watch, to your cart, with Reduck\n\nTwo things start this workflow, and both lead to the same checks:\n\n- **An alert**: a message that reaches the webhook (for example from a bot that forwards a chat channel) and holds a product link.\n- **The watch**: every few minutes, the workflow reads one listing page of the shop and compares it with the last time. A product that is new, or back in stock, goes on.\n\nFor each product, the Reduck node runs `reduck/king-jouet.com/get_product` to read its price and stock. When the price is under your limit and the page offers the product, it runs `reduck/king-jouet.com/add_to_cart`, then posts the result to your notification webhook. Otherwise it posts that it needs you.\n\nThe Reduck node works in your own Chrome, so the shop sees a normal visitor. Nothing is paid: you finish the order yourself. For a shop where a script can place the order, see the example **Alert to automatic purchase**.\n\nThe first watch run only records what the shop shows. n8n keeps that memory only for the **active** workflow: activate it, do not just test it.\n\nTo use another shop, change the script addresses and arguments, and the **Product link pattern** in **Config**.\n\nBefore you activate it: set the **Config** values, a **Header Auth** credential on the webhook, and keep **Retry On Fail** off on **Add To Cart**.",
+        "height": 640,
+        "width": 560,
+        "color": 7
+      },
+      "id": "cd14e417-18f0-5424-8096-413881bfd569",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shop-alert",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "9bf7bccc-73eb-50ef-8055-af750d92e0f9",
+      "name": "Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -160
+      ],
+      "webhookId": "ddff62a1-a31b-5e7e-aec4-8cbb3a6746f2"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "a70c4c85-9862-55c7-b7b3-b646c8eea1d2",
+      "name": "Trigger Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "listing_url",
+              "name": "listing_url",
+              "type": "string",
+              "value": "https://www.king-jouet.com/jeux-jouets/jeux-societes/page1.htm"
+            },
+            {
+              "id": "product_pattern",
+              "name": "product_pattern",
+              "type": "string",
+              "value": "https?://(?:www\\.)?king-jouet\\.com/[^\\s>)]*ref-\\d+-[^\\s>)]*"
+            },
+            {
+              "id": "max_price",
+              "name": "max_price",
+              "type": "number",
+              "value": 0
+            },
+            {
+              "id": "quantity",
+              "name": "quantity",
+              "type": "number",
+              "value": 1
+            },
+            {
+              "id": "notify_webhook",
+              "name": "notify_webhook",
+              "type": "string",
+              "value": ""
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a426f55a-16bf-5460-861c-6a217b78c52a",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cf8eac50-72f0-57ff-9093-733905dbf505",
+              "leftValue": "={{ $('Alert Webhook').isExecuted }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "84696845-8b58-576f-b4f3-a16b4d3022b9",
+      "name": "From An Alert",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Takes the product link out of the alert text with the Config pattern. No link: the run stops here.\nconst cfg = $('Config').first().json;\nconst text = $('Alert Webhook').first().json.body?.content ?? '';\nconst m = text.match(new RegExp(cfg.product_pattern, 'i'));\nif (!m) return [];\nreturn [{ json: { url: m[0], source: 'alert' } }];"
+      },
+      "id": "68a22c36-aeff-58d9-992b-8962e035fd81",
+      "name": "Read Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/king-jouet.com/list_products"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.listing_url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "page",
+              "displayName": "page",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "3f75fc0d-7417-5bcc-be23-52fa7aa2ee85",
+      "name": "List Products",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        660,
+        160
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compares the listing with the one seen last time. New products, and products back on the web site, go on.\nconst res = $input.first().json.result;\nif (!res || !Array.isArray(res.products)) throw new Error('The listing could not be read: ' + ($input.first().json.error ?? 'no result'));\nconst memory = $getWorkflowStaticData('global');\nconst before = memory.seen ?? null;\nconst now = {};\nfor (const p of res.products) now[p.ref] = p.available_web;\nmemory.seen = now;\nif (before === null) return []; // first run: only remember\nconst changed = res.products.filter((p) => p.available_web && (before[p.ref] === undefined || before[p.ref] === false));\nreturn changed.map((p) => ({ json: { url: p.url, source: before[p.ref] === undefined ? 'new product' : 'back in stock' } }));"
+      },
+      "id": "595e7915-1c24-58af-82db-c1e4d71342b9",
+      "name": "Find What Changed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "url",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $json.source }}"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "57432777-223a-5612-84fd-8cc1ae826b1e",
+      "name": "Product",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/king-jouet.com/get_product"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "1043b180-0a16-5783-af8b-58bac557a2c2",
+      "name": "Check Product",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        0
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "52246a2c-4edf-5476-a8ee-c07f1704fc80",
+              "leftValue": "={{ $json.result?.price != null && $json.result.price <= $('Config').first().json.max_price && $json.result.can_add_to_cart === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b5d210d5-9485-5139-852a-0f71827c71bf",
+      "name": "Under Limit And Available",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/king-jouet.com/add_to_cart"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $('Product').all()[$itemIndex].json.url }}",
+            "quantity": "={{ $('Config').first().json.quantity }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "65ecb6f8-1377-50c5-affd-fc62a4af992b",
+      "name": "Add To Cart",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        -120
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.notify_webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: 'Added to your cart (' + $('Product').all()[$itemIndex].json.source + '): ' + ($json.result ? $json.result.lines.map((l) => l.quantity + ' x ' + l.name).join(', ') + '. Cart: ' + $json.result.count + ' items, ' + $json.result.total + ' EUR. ' : 'it could not be added: ' + ($json.error ?? 'unknown error') + '. ') + $('Product').all()[$itemIndex].json.url }) }}",
+        "options": {}
+      },
+      "id": "0d080664-ff77-571e-8b3a-9678d330c42c",
+      "name": "Notify Added",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.notify_webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: 'Needs you (' + $('Product').all()[$itemIndex].json.source + '): over your price limit, or not available. ' + $('Product').all()[$itemIndex].json.url }) }}",
+        "options": {}
+      },
+      "id": "a31a9c75-aecb-55b3-9b45-6a4168ca1794",
+      "name": "Notify Needs You",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Alert Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "From An Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "From An Alert": {
+      "main": [
+        [
+          {
+            "node": "Read Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "List Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Alert": {
+      "main": [
+        [
+          {
+            "node": "Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Products": {
+      "main": [
+        [
+          {
+            "node": "Find What Changed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find What Changed": {
+      "main": [
+        [
+          {
+            "node": "Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Product": {
+      "main": [
+        [
+          {
+            "node": "Check Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Product": {
+      "main": [
+        [
+          {
+            "node": "Under Limit And Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Under Limit And Available": {
+      "main": [
+        [
+          {
+            "node": "Add To Cart",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Needs You",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add To Cart": {
+      "main": [
+        [
+          {
+            "node": "Notify Added",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
