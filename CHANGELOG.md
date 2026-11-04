@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.25](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.24...0.2.25)
+
+- fix(convert): the converter reads and writes the node's single version, with Browser and Options [`97d67b3`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/97d67b3d0f686adf941e11796717918db31b7f5a)
+- feat: an address without a handle runs the official script [`50e4bba`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/50e4bba529bd3e312127fd0418a6d498f427eeae)
+
 #### [0.2.24](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.23...0.2.24)
+
+> 3 November 2026
 
 - feat!: one node version, with the browser first and Region and Country in Options [`c147104`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/c14710452d23e349f8017ca81a501629504110c3)
 
