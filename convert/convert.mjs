@@ -57,18 +57,19 @@ function reduckKind(node) {
 	return PACKAGES.includes(node.type.slice(0, dot)) ? node.type.slice(dot + 1) : null;
 }
 
-// The parameters the Reduck node runs with: each one as it is saved, or its default for the
-// node's version (n8n saves no parameter that equals its default).
+// The parameters the Reduck node runs with: each one as it is saved, or its default (n8n saves no
+// parameter that equals its default). A deviceId of '' is the managed browser.
 function reduckSettings(node) {
 	const p = node.parameters ?? {};
-	const v = node.typeVersion ?? 1;
+	const browser = p.browser ?? PAIRED_BROWSER;
 	return {
 		script: (typeof p.script === 'object' ? p.script?.value : p.script) ?? '',
 		args: p.args?.value ?? {},
-		deviceId: p.deviceId ?? (v >= 1.1 ? PAIRED_BROWSER : ''),
-		region: p.region ?? 'eu-central-1',
-		country: p.country ?? '',
-		simplify: p.simplify ?? v >= 1.2,
+		browser,
+		deviceId: browser === 'managed' ? '' : (p.deviceId ?? PAIRED_BROWSER),
+		region: p.options?.region ?? '',
+		country: p.options?.country ?? '',
+		simplify: p.simplify ?? true,
 	};
 }
 
@@ -78,7 +79,8 @@ function refusal(node, s) {
 	if (isExpression(s.script)) return 'its script is given by an expression';
 	if (s.script.split('/').length !== 3 || s.script.split('/').some((part) => !part.trim()))
 		return `"${s.script}" is not a script address (handle/host/slug)`;
-	if (isExpression(s.deviceId)) return 'its browser is given by an expression';
+	if (isExpression(s.browser) || isExpression(s.deviceId))
+		return 'its browser is given by an expression';
 	const keys = Object.keys(s.args);
 	if (keys.some((key) => key.startsWith('file:')))
 		return 'it sends a file, and n8n Cloud gives no file bytes to an HTTP Request node';
@@ -242,7 +244,7 @@ function fromPair(request, output, type, credential) {
 		id: output.id,
 		name: output.name,
 		type,
-		typeVersion: 1.2,
+		typeVersion: 1,
 		position: [x - HALF_GAP, y],
 		parameters: {
 			authentication: 'apiKey',
@@ -266,8 +268,12 @@ function fromPair(request, output, type, credential) {
 					canBeUsedToMatch: false,
 				})),
 			},
-			deviceId,
-			...(deviceId ? {} : { region: fields.region ?? '', country: fields.country ?? '' }),
+			...(deviceId
+				? { browser: PAIRED_BROWSER, deviceId }
+				: {
+						browser: 'managed',
+						options: pick(fields, (key) => key === 'region' || key === 'country'),
+					}),
 			simplify: /^const simplify = true;$/m.test(output.parameters.jsCode),
 		},
 		...(credential ? { credentials: { reduckApi: credential } } : {}),

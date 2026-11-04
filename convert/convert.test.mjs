@@ -9,11 +9,10 @@ const workflows = readdirSync(examples)
 	.filter((file) => file.endsWith('.json'))
 	.map((file) => [file, JSON.parse(readFileSync(new URL(file, examples), 'utf8'))]);
 
-// What a Reduck node does, whatever its version: the same for a node and its round trip.
+// What a Reduck node does: the same for a node and its round trip.
 function behavior(node) {
 	const p = node.parameters;
-	const v = node.typeVersion;
-	const deviceId = p.deviceId ?? (v >= 1.1 ? 'extension' : '');
+	const managed = p.browser === 'managed';
 	const args = Object.fromEntries(
 		Object.entries(p.args?.value ?? {}).filter(([, value]) => value !== null && value !== ''),
 	);
@@ -21,9 +20,11 @@ function behavior(node) {
 		name: node.name,
 		script: p.script.value,
 		args,
-		deviceId,
-		...(deviceId ? {} : { region: p.region ?? 'eu-central-1', country: (p.country ?? '').trim() }),
-		simplify: p.simplify ?? v >= 1.2,
+		deviceId: managed ? '' : (p.deviceId ?? 'extension'),
+		...(managed
+			? { region: p.options?.region, country: p.options?.country?.trim() || undefined }
+			: {}),
+		simplify: p.simplify ?? true,
 		onError: node.onError,
 		notes: node.notes,
 	};
@@ -66,7 +67,7 @@ const node = (parameters, extra = {}) => ({
 	id: 'n1',
 	name: 'Run',
 	type: REDUCK_TYPE,
-	typeVersion: 1.2,
+	typeVersion: 1,
 	position: [0, 0],
 	parameters: {
 		script: { __rl: true, mode: 'address', value: 'reduck/example.com/ping' },
@@ -95,12 +96,14 @@ test('the body is the one the Reduck node sends', () => {
 		browser: 'extension',
 		wait_seconds: '={{ 55 }}',
 	});
-	const managed = toHttp(workflowOf(node({ deviceId: '', country: ' FR ' }))).workflow;
-	assert.deepEqual(fields(managed), {
-		region: 'eu-central-1',
-		country: 'FR',
-		wait_seconds: '={{ 55 }}',
-	});
+	const managed = toHttp(
+		workflowOf(node({ browser: 'managed', deviceId: 'ignored', options: { country: ' FR ' } })),
+	).workflow;
+	assert.deepEqual(fields(managed), { country: 'FR', wait_seconds: '={{ 55 }}' });
+	const region = toHttp(
+		workflowOf(node({ browser: 'managed', options: { region: 'us-east-1' } })),
+	).workflow;
+	assert.deepEqual(fields(region), { region: 'us-east-1', wait_seconds: '={{ 55 }}' });
 	const device = toHttp(
 		workflowOf(node({ deviceId: '3f1c0b1e-0000-4000-8000-000000000000' })),
 	).workflow;
@@ -110,18 +113,11 @@ test('the body is the one the Reduck node sends', () => {
 	});
 });
 
-test('a version 1 node keeps the defaults of version 1', () => {
-	const { workflow } = toHttp(workflowOf({ ...node({}), typeVersion: 1 }));
-	const request = workflow.nodes[0];
-	assert.equal(request.parameters.genericAuthType, 'httpHeaderAuth');
-	assert.deepEqual(fields(workflow), { region: 'eu-central-1', wait_seconds: '={{ 55 }}' });
-	assert.match(workflow.nodes[1].parameters.jsCode, /^const simplify = false;$/m);
-});
-
 test('what an HTTP Request node cannot do stays a Reduck node, with the reason', () => {
 	const cases = [
 		[node({ script: { __rl: true, mode: 'address', value: '={{ $json.script }}' } }), /expression/],
 		[node({ deviceId: '={{ $json.device }}' }), /browser is given by an expression/],
+		[node({ browser: '={{ $json.browser }}' }), /browser is given by an expression/],
 		[node({ args: { value: { 'file:upload': 'data' } } }), /file/],
 		[node({ args: { value: { 'a.b': 1 } } }), /path/],
 		[
