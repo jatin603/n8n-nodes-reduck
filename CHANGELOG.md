@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.29](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.28...0.2.29)
+
+- fix: the links to the API keys page carry a utm [`#6`](https://github.com/reduck-ai/n8n-nodes-reduck/pull/6)
+
 #### [0.2.28](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.27...0.2.28)
+
+> 4 November 2026
 
 - fix: the script address has no hint [`02f5b3a`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/02f5b3a8270de3e6c84af4202722be4195efb2db)
 
