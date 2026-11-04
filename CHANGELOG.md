@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.27](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.26...0.2.27)
+
+- fix(deps): undici 7.30.1, for its TLS and redirect advisories [`e3e91f6`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/e3e91f6d77ecfb244f3c8b6b249b51c2eef322ac)
+- fix: changing the handle empties the script [`313711a`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/313711a6f3178457c5f8843bf70643bcf73d0aba)
+
 #### [0.2.26](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.25...0.2.26)
+
+> 4 November 2026
 
 - feat: a Handle field picks the owner of the script, as the MCP's handle [`5ce0257`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/5ce0257f5635769f6a6ebeab014cba3be5eaee26)
 
