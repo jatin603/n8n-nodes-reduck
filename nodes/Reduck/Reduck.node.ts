@@ -101,14 +101,14 @@ export class Reduck implements INodeType {
 						displayName: 'By Address',
 						name: 'address',
 						type: 'string',
-						placeholder: 'e.g. reduck/google.com/get_ai_overview',
-						hint: 'The owner handle, the site and the script, separated by slashes',
+						placeholder: 'e.g. google.com/get_ai_overview',
+						hint: 'The site and the script, e.g. google.com/get_ai_overview for an official script. For another owner\'s script, put its handle first: @username/site/script, or project/site/script.',
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex: '^[^/\\s]+/[^/\\s]+/[^/\\s]+$',
-									errorMessage: 'Use the form handle/host/slug',
+									regex: '^([^/\\s]+/)?[^/\\s]+/[^/\\s]+$',
+									errorMessage: 'Use the form host/slug or handle/host/slug',
 								},
 							},
 						],
@@ -324,7 +324,7 @@ async function itemRunOf(
 	const address = ctx.getNodeParameter('script', i, '', { extractValue: true }) as string;
 	const script = parseScriptAddress(address);
 	if (!script) {
-		throw new NodeOperationError(ctx.getNode(), `"${address}" is not a script address (handle/host/slug)`, {
+		throw new NodeOperationError(ctx.getNode(), `"${address}" is not a script address (host/slug or handle/host/slug)`, {
 			itemIndex: i,
 		});
 	}
