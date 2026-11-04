@@ -98,6 +98,8 @@ export class Reduck implements INodeType {
 				default: { mode: 'list', value: '' },
 				required: true,
 				description: 'The script to run',
+				// n8n empties the field when the handle changes.
+				typeOptions: { loadOptionsDependsOn: ['handle'] },
 				modes: [
 					{
 						displayName: 'From List',
