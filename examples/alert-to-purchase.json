@@ -1,0 +1,546 @@
+{
+  "id": "reduckAlertToPurchase",
+  "name": "Alert to automatic purchase (Reduck)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Alert to automatic purchase, with Reduck\n\nWhen an alert about a product being back in stock reaches the webhook (for example from a Discord bot that forwards the channel's messages), this workflow reads the product page, checks the price and the stock, prepares the order, and places it only when the total is under your limit. It then posts the result to a notification webhook: **order placed**, or **needs you**.\n\nThe Reduck node runs `reduck/amazon.fr/get-product` and `reduck/amazon.fr/buy_now` in your own Chrome, signed in to your account, so the shop sees a normal visitor. The order is placed only if the checkout still matches the one reviewed: same items, address, card and total.\n\n**To use another shop**, change the two script addresses, the argument names, and the **Product pattern** in **Config**. A script that only adds to the cart stops before payment: then the workflow ends with the cart and you finish the order.\n\nIf your bank asks for a check, the order waits for your approval in the bank app and the notification says so.\n\nBefore you activate it: set the **Config** values, a **Header Auth** credential on the webhook, and keep **Retry On Fail** off on **Place Order**.",
+        "height": 520,
+        "width": 460,
+        "color": 7
+      },
+      "id": "4c988627-ddae-5703-ba0a-0c346b5b4784",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shop-alert",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "4137fe41-eed4-5ed9-bd64-0fc8491a04ac",
+      "name": "Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "7a4d2adc-4841-5d50-a2b7-3d0c447296ea"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "product_pattern",
+              "name": "product_pattern",
+              "type": "string",
+              "value": "(?:dp|gp/product)/([A-Z0-9]{10})"
+            },
+            {
+              "id": "max_price",
+              "name": "max_price",
+              "type": "number",
+              "value": 0
+            },
+            {
+              "id": "max_quantity",
+              "name": "max_quantity",
+              "type": "number",
+              "value": 1
+            },
+            {
+              "id": "billing_address",
+              "name": "billing_address",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "card_last4",
+              "name": "card_last4",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "notify_webhook",
+              "name": "notify_webhook",
+              "type": "string",
+              "value": ""
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "bce6fb4e-6fdd-5e01-8b58-1f4b949cd6ec",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Takes the product identifier out of the alert text with the Config pattern. No match: the run stops here.\nconst cfg = $('Config').first().json;\nconst text = $('Alert Webhook').first().json.body?.content ?? '';\nconst m = text.match(new RegExp(cfg.product_pattern, 'i'));\nif (!m) return [];\nreturn [{ json: { asin: (m[1] ?? m[0]).toUpperCase().trim(), alert: text } }];"
+      },
+      "id": "dfdd4022-b432-529d-bdf0-0a182e6c841e",
+      "name": "Read Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/amazon.fr/get-product"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "asin": "={{ $json.asin }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "asin",
+              "displayName": "asin",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "zipCode",
+              "displayName": "zipCode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "28aafe04-73cd-566a-9fb1-1ceb8c7fc464",
+      "name": "Read Product",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "8e039d71-4ff6-502b-8d23-886a279bcc37",
+              "leftValue": "={{ $json.result?.price?.value != null && $json.result.price.value <= $('Config').first().json.max_price && !/indisponible|unavailable|out of stock|épuisé/i.test($json.result.availability ?? '') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c837eb45-b808-5c41-9b38-bbdbd24168d6",
+      "name": "Price And Stock Ok",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/amazon.fr/buy_now"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "asin": "={{ $('Read Alert').first().json.asin }}",
+            "quantity": "={{ $('Config').first().json.max_quantity }}",
+            "address": "={{ $('Config').first().json.billing_address }}",
+            "payment": "={{ $('Config').first().json.card_last4 }}",
+            "place_order": false
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "asin",
+              "displayName": "asin",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "payment",
+              "displayName": "payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "place_order",
+              "displayName": "place_order",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "review_hash",
+              "displayName": "review_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "c643f761-2b2a-5f49-8058-55e6f3f8aae5",
+      "name": "Review Order",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -120
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "4af315b6-390a-55f2-bd48-85a05a61aac5",
+              "leftValue": "={{ parseFloat(String($json.result.order_total).replace(/[^0-9,.]/g,'').replace(',', '.')) <= $('Config').first().json.max_price * $('Config').first().json.max_quantity }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0e794da2-8815-5e86-b3f3-4cd191fac2aa",
+      "name": "Total Within Limit",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "script": {
+          "__rl": true,
+          "mode": "address",
+          "value": "reduck/amazon.fr/buy_now"
+        },
+        "args": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "asin": "={{ $('Read Alert').first().json.asin }}",
+            "quantity": "={{ $('Config').first().json.max_quantity }}",
+            "address": "={{ $('Config').first().json.billing_address }}",
+            "payment": "={{ $('Config').first().json.card_last4 }}",
+            "place_order": true,
+            "review_hash": "={{ $('Review Order').first().json.result.review_hash }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "asin",
+              "displayName": "asin",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "payment",
+              "displayName": "payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "place_order",
+              "displayName": "place_order",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "review_hash",
+              "displayName": "review_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "browser": "extension",
+        "deviceId": "extension",
+        "simplify": true
+      },
+      "id": "6d2fcf7b-bc51-5d72-8d5f-05865cdd795f",
+      "name": "Place Order",
+      "type": "@reduck-ai/n8n-nodes-reduck.reduck",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        -240
+      ],
+      "credentials": {},
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.notify_webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: 'Order placed: ' + ($json.result?.order_ids ?? []).join(', ') + ' (' + $('Read Alert').first().json.asin + ')' + ($json.result?.payment_verification_required ? '. Approve the payment in your bank app.' : '') }) }}",
+        "options": {}
+      },
+      "id": "3f672dc5-fe96-51c8-9e13-26dfd712a362",
+      "name": "Notify Order Placed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.notify_webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: 'Needs you: ' + $('Read Alert').first().json.asin + ' is over your limits or not available. ' + $('Read Alert').first().json.alert }) }}",
+        "options": {}
+      },
+      "id": "6097e3fd-8039-576f-b486-b0f83163770b",
+      "name": "Notify Needs You",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        60
+      ]
+    }
+  ],
+  "connections": {
+    "Alert Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Alert": {
+      "main": [
+        [
+          {
+            "node": "Read Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Product": {
+      "main": [
+        [
+          {
+            "node": "Price And Stock Ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Price And Stock Ok": {
+      "main": [
+        [
+          {
+            "node": "Review Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Needs You",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review Order": {
+      "main": [
+        [
+          {
+            "node": "Total Within Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Total Within Limit": {
+      "main": [
+        [
+          {
+            "node": "Place Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Needs You",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Place Order": {
+      "main": [
+        [
+          {
+            "node": "Notify Order Placed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
