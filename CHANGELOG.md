@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.28](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.27...0.2.28)
+
+- fix: the script address has no hint [`02f5b3a`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/02f5b3a8270de3e6c84af4202722be4195efb2db)
+
 #### [0.2.27](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.26...0.2.27)
+
+> 4 November 2026
 
 - fix(deps): undici 7.30.1, for its TLS and redirect advisories [`e3e91f6`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/e3e91f6d77ecfb244f3c8b6b249b51c2eef322ac)
 - fix: changing the handle empties the script [`313711a`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/313711a6f3178457c5f8843bf70643bcf73d0aba)
