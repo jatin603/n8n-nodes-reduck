@@ -59,13 +59,28 @@ export async function reduckRequest<T>(
 	}
 }
 
-// A script is addressed as "<handle>/<host>/<slug>", e.g. "@username/example.com/my_script", or
-// as "<host>/<slug>" for the official catalogue, whose handle is "reduck".
-export function parseScriptAddress(address: string): { handle: string; host: string; slug: string } | null {
+// The account's own handle, read once per execution or dropdown load.
+const ownHandles = new WeakMap<Ctx, Promise<string>>();
+
+// A script is addressed as "<handle>/<host>/<slug>", e.g. "reduck/google.com/get_ai_overview", or
+// as "<host>/<slug>" under `handle`: the account's own when it is empty, as the MCP's run_script.
+export async function parseScriptAddress(
+	ctx: Ctx,
+	address: string,
+	handle: string,
+): Promise<{ handle: string; host: string; slug: string } | null> {
 	const parts = address.trim().split('/');
-	const [handle, host, slug] = parts.length === 2 ? ['reduck', ...parts] : parts;
-	if (!handle || !host || !slug || parts.length > 3) return null;
-	return { handle, host, slug };
+	if (parts.length === 2) {
+		if (!handle && !ownHandles.has(ctx))
+			ownHandles.set(
+				ctx,
+				reduckRequest<{ handle: string | null }>(ctx, 'GET', '/api/me').then((me) => me.handle ?? ''),
+			);
+		parts.unshift(handle || ((await ownHandles.get(ctx)) ?? ''));
+	}
+	const [owner, host, slug] = parts;
+	if (!owner || !host || !slug || parts.length > 3) return null;
+	return { handle: owner, host, slug };
 }
 
 export const scriptPath = ({ handle, host, slug }: { handle: string; host: string; slug: string }) =>

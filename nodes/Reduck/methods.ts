@@ -37,10 +37,11 @@ export interface Script {
 
 const PAGE_SIZE = 50;
 
-// The scripts the account can run: its own, its projects', and the official catalogue. Each one
-// links to its page on Reduck, which shows its description, its input and its output: n8n shows
-// none of them in a node (a list item's `description` is not rendered either), so the node points
-// at the page that already has them.
+// The scripts of the Handle field's owner, or with no handle every script the account can run: its
+// own, its projects', and the official catalogue, as the MCP's list_scripts. Each one links to its
+// page on Reduck, which shows its description, its input and its output: n8n shows none of them in
+// a node (a list item's `description` is not rendered either), so the node points at the page that
+// already has them.
 export async function searchScripts(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -49,8 +50,10 @@ export async function searchScripts(
 	// The API counts pages from 0.
 	const page = paginationToken ? Number(paginationToken) : 0;
 	const origin = await reduckUrl(this);
-	const answer = await reduckRequest<{ data: ScriptSummary[]; has_next_page: boolean }>(this, 'GET', '/api/scripts', {
-		qs: { page, page_size: PAGE_SIZE, ...(filter ? { q: filter } : {}) },
+	const handle = this.getCurrentNodeParameter('handle');
+	const path = typeof handle === 'string' && handle ? `/api/scripts/${encodeURIComponent(handle)}` : '/api/scripts';
+	const answer = await reduckRequest<{ data: ScriptSummary[]; has_next_page: boolean }>(this, 'GET', path, {
+		qs: { page, page_size: PAGE_SIZE, archived: 'false', ...(filter ? { q: filter } : {}) },
 	});
 	return {
 		results: answer.data.map((script) => {
@@ -87,7 +90,12 @@ const fieldType = (property: JsonSchemaProperty): FieldType => {
 // the binary property of the input item that holds the file.
 export async function getScriptArgs(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const address = this.getCurrentNodeParameter('script', { extractValue: true });
-	const script = parseScriptAddress(typeof address === 'string' ? address : '');
+	const handle = this.getCurrentNodeParameter('handle');
+	const script = await parseScriptAddress(
+		this,
+		typeof address === 'string' ? address : '',
+		typeof handle === 'string' ? handle : '',
+	);
 	if (!script) return { fields: [] };
 
 	const answer = await reduckRequest<Script>(this, 'GET', scriptPath(script)).catch((error: unknown) => {
@@ -120,6 +128,28 @@ export async function getScriptArgs(this: ILoadOptionsFunctions): Promise<Resour
 		};
 	});
 	return { fields };
+}
+
+// The owners a script can come from, as the MCP's `handle`: none for all of them, the official
+// catalogue, the account, and its projects.
+export async function getHandles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const me = await reduckRequest<{ handle: string | null; projects: Array<{ handle: string; name: string }> }>(
+		this,
+		'GET',
+		'/api/me',
+	);
+	return [
+		{
+			name: 'Any',
+			value: '',
+			description: "Yours, your projects' and the official scripts. A host/slug address is one of yours.",
+		},
+		{ name: 'Official', value: 'reduck', description: 'The official catalogue, reduck' },
+		...(me.handle ? [{ name: `You (${me.handle})`, value: me.handle }] : []),
+		...me.projects
+			.filter((project) => project.handle !== 'reduck')
+			.map((project) => ({ name: `${project.name} (${project.handle})`, value: project.handle })),
+	];
 }
 
 // The API's own name for the account's paired browser, sent as the run's `browser`: the API picks

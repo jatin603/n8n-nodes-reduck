@@ -11,7 +11,7 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import { FILE_FIELD, PAIRED_BROWSER, getDevices, getScriptArgs, searchScripts, type Script } from './methods';
+import { FILE_FIELD, PAIRED_BROWSER, getDevices, getHandles, getScriptArgs, searchScripts, type Script } from './methods';
 import { parseScriptAddress, reduckRequest, reduckUrl, scriptPath, type Run } from './transport';
 
 const POLL_MS = 2000;
@@ -83,6 +83,15 @@ export class Reduck implements INodeType {
 				default: 'run',
 			},
 			{
+				displayName: 'Handle Name or ID',
+				name: 'handle',
+				type: 'options',
+				typeOptions: { loadOptionsMethod: 'getHandles' },
+				default: '',
+				description:
+					'The owner of the script. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName: 'Script',
 				name: 'script',
 				type: 'resourceLocator',
@@ -102,7 +111,7 @@ export class Reduck implements INodeType {
 						name: 'address',
 						type: 'string',
 						placeholder: 'e.g. google.com/get_ai_overview',
-						hint: 'The site and the script, e.g. google.com/get_ai_overview for an official script. For another owner\'s script, put its handle first: @username/site/script, or project/site/script.',
+						hint: "The site and the script of the Handle's owner, or of yours with Any. To name another owner, put its handle first: reduck/google.com/get_ai_overview.",
 						validation: [
 							{
 								type: 'regex',
@@ -123,7 +132,7 @@ export class Reduck implements INodeType {
 				default: { mappingMode: 'defineBelow', value: null },
 				required: true,
 				typeOptions: {
-					loadOptionsDependsOn: ['script.value'],
+					loadOptionsDependsOn: ['handle', 'script.value'],
 					resourceMapper: {
 						resourceMapperMethod: 'getScriptArgs',
 						mode: 'add',
@@ -218,7 +227,7 @@ export class Reduck implements INodeType {
 	methods = {
 		listSearch: { searchScripts },
 		resourceMapping: { getScriptArgs },
-		loadOptions: { getDevices },
+		loadOptions: { getDevices, getHandles },
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -322,7 +331,7 @@ async function itemRunOf(
 	loggedIn: Map<string, Promise<boolean>>,
 ): Promise<ItemRun> {
 	const address = ctx.getNodeParameter('script', i, '', { extractValue: true }) as string;
-	const script = parseScriptAddress(address);
+	const script = await parseScriptAddress(ctx, address, ctx.getNodeParameter('handle', i, '') as string);
 	if (!script) {
 		throw new NodeOperationError(ctx.getNode(), `"${address}" is not a script address (host/slug or handle/host/slug)`, {
 			itemIndex: i,
