@@ -20,14 +20,6 @@ export class ReduckApi implements ICredentialType {
 	hideDomainRestrictionFields = true;
 
 	properties: INodeProperties[] = [
-		// A notice shows by default; a field's description only in its tooltip.
-		{
-			displayName:
-				'Create an API key at <a href="https://reduck.ai/api-keys?utm_source=n8n&utm_medium=credential" target="_blank">reduck.ai/api-keys</a>',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
@@ -35,6 +27,8 @@ export class ReduckApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
+			// Shown under the field; a description shows only in its tooltip.
+			hint: 'Get your API key at <a href="https://reduck.ai/api-keys?utm_source=n8n&utm_medium=credential" target="_blank">reduck.ai/api-keys</a>',
 		},
 		// Another Reduck environment, for our tests, is set where the credential is imported.
 		{
