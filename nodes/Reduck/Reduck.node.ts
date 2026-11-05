@@ -42,30 +42,8 @@ export class Reduck implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'reduckApi',
-				required: true,
-				displayOptions: { show: { authentication: ['apiKey'] } },
-			},
-			{
-				name: 'reduckOAuth2Api',
-				required: true,
-				displayOptions: { show: { authentication: ['oAuth2'] } },
-			},
-		],
+		credentials: [{ name: 'reduckApi', required: true }],
 		properties: [
-			// n8n's credential window offers these two, as OAuth2 or API Key.
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{ name: 'OAuth2', value: 'oAuth2' },
-					{ name: 'API Key', value: 'apiKey' },
-				],
-				default: 'oAuth2',
-			},
 			// The one thing the node does. It names the action that the nodes panel and an AI agent show.
 			{
 				displayName: 'Operation',

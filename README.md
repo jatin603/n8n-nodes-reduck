@@ -108,11 +108,9 @@ To choose between the two, see the [FAQ](#faq).
    For Docker and other setups, see the
    [n8n guide](https://docs.n8n.io/integrations/community-nodes/installation/).
 
-2. **Sign in.** Add a **Reduck** node to a workflow. In **Credential**, select **Connect to
-   Reduck**, then **Connect**, and select **Authorize** on Reduck.
-
-   To use an API key instead, set **OAuth2** to **API Key** in the same window, and paste a key
-   from [API keys](https://reduck.ai/api-keys?utm_source=n8n&utm_medium=readme).
+2. **Add your API key.** Add a **Reduck** node to a workflow. In **Credential**, select
+   **Create new credential**, and paste a key from
+   [API keys](https://reduck.ai/api-keys?utm_source=n8n&utm_medium=readme).
 
 3. **Run a script.** In **Script**, search `ai overview` and select **Get Google AI Overview**.
    In **query**, type a search, for example `best crm for small business`. Then select

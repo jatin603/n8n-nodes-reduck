@@ -62,7 +62,7 @@ description: |
 
 **Each Reduck node**
 - The node's `typeVersion`, `simplify: true`, `credentials: {}`, script **By Address**
-  (`reduck/<host>/<slug>`). Set the defaults explicitly (authentication, browser, `simplify`), so
+  (`reduck/<host>/<slug>`). Set the defaults explicitly (browser, `simplify`), so
   a change of default does not change the workflow.
 - The browser on purpose: `managed`, with `options` (`region`, `country`), or `extension` (the
   user's Chrome, for their accounts) with `deviceId: extension` (Default). The script's contract
@@ -70,14 +70,14 @@ description: |
   managed browser needs a `country`. A script that requires login runs only on `extension`.
 - A node note says where it runs and why. Example: "Your paired Chrome: Reddit blocks managed
   browsers."
-- One credential: **Connect to Reduck** in one node, and n8n adds it to the others.
+- One credential: an API key in one node, and n8n adds it to the others.
 
 **Notes**
 - Overview: yellow (no `color`), top-left. Section notes: white (`color: 7`).
 - The overview has the structure of n8n's sticky-note page. Its `### Setup` adds, one line each:
   - the package `@reduck-ai/n8n-nodes-reduck`, with no version: the user installs the latest,
     self-hosted n8n only, https://docs.reduck.ai/n8n/#quick-start;
-  - the Reduck account, and Connect to Reduck in one node;
+  - the Reduck account, and an API key from https://reduck.ai/api-keys in one node;
   - for `extension` nodes: the extension, the sites to sign in to, Chrome kept open;
   - each Config field, with an example;
   - when the first run acts for real: "This is not a test."

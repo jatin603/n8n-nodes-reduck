@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Book a Doctolib appointment, with Reduck\n\nEvery hour, this workflow looks for a free slot with the doctors you list, inside your dates. It books the earliest slot that fits and emails you. When you already have an upcoming appointment with one of these doctors, it books nothing. You can run it again and again: you get one appointment.\n\n**Set it up**\n1. Install the Reduck extension in Chrome and pair it. In that Chrome, sign in to Doctolib and to Gmail.\n2. Open one of the four Reduck nodes and, in **Credential**, click **Connect to Reduck** to sign in with OAuth2. n8n adds that account to the other three nodes. To use an API key instead, set **Authentication** to **API Key** in each Reduck node.\n3. Edit **Config**, and only Config:\n   - `doctors`: the Doctolib link of each doctor, one per line. On doctolib.fr, open the doctor, click Book, choose the place and the type of visit, then copy the address of the page that shows the dates. It looks like `https://www.doctolib.fr/<specialty>/<city>/<name>/booking/availabilities?…placeId=practice-123…&motiveIds[]=456…`.\n   - `from`, `to`: the first and last day you accept, YYYY-MM-DD.\n   - `weekdays`: for example `tue, thu, fri`. Empty: every day.\n   - `hours`: the start time of the slot, in Paris time, both ends included: `08:00-18:30` books a slot that starts at 18:30, not one at 18:45. Empty: any time.\n   - `new_patient`: `true` if it is your first visit to this doctor.\n   - `notify_to`: who gets the email (required). `notify_from`: the Gmail account that sends it, signed in in your Chrome. Empty: Gmail's default account.\n4. Click **Execute workflow** to run it once. This is not a test: if a slot fits, it books it and sends the email. Then click **Publish** to run it every hour.\n\n**What happens**\n- No free slot fits: nothing happens. The next hour tries again.\n- A slot fits: Reduck books it on Doctolib for the account signed in in your Chrome, and emails you the time and the address.\n- You already have an appointment with one of these doctors: nothing happens. To cancel, use Doctolib.\n\nFree slots are read on a Reduck managed browser in France. The booking and the email use your paired Chrome, so keep it open.",
+        "content": "## Book a Doctolib appointment, with Reduck\n\nEvery hour, this workflow looks for a free slot with the doctors you list, inside your dates. It books the earliest slot that fits and emails you. When you already have an upcoming appointment with one of these doctors, it books nothing. You can run it again and again: you get one appointment.\n\n**Set it up**\n1. Install the Reduck extension in Chrome and pair it. In that Chrome, sign in to Doctolib and to Gmail.\n2. In one of the four Reduck nodes, create a **Credential** with your key from https://reduck.ai/api-keys. n8n adds it to the other three nodes.\n3. Edit **Config**, and only Config:\n   - `doctors`: the Doctolib link of each doctor, one per line. On doctolib.fr, open the doctor, click Book, choose the place and the type of visit, then copy the address of the page that shows the dates. It looks like `https://www.doctolib.fr/<specialty>/<city>/<name>/booking/availabilities?…placeId=practice-123…&motiveIds[]=456…`.\n   - `from`, `to`: the first and last day you accept, YYYY-MM-DD.\n   - `weekdays`: for example `tue, thu, fri`. Empty: every day.\n   - `hours`: the start time of the slot, in Paris time, both ends included: `08:00-18:30` books a slot that starts at 18:30, not one at 18:45. Empty: any time.\n   - `new_patient`: `true` if it is your first visit to this doctor.\n   - `notify_to`: who gets the email (required). `notify_from`: the Gmail account that sends it, signed in in your Chrome. Empty: Gmail's default account.\n4. Click **Execute workflow** to run it once. This is not a test: if a slot fits, it books it and sends the email. Then click **Publish** to run it every hour.\n\n**What happens**\n- No free slot fits: nothing happens. The next hour tries again.\n- A slot fits: Reduck books it on Doctolib for the account signed in in your Chrome, and emails you the time and the address.\n- You already have an appointment with one of these doctors: nothing happens. To cancel, use Doctolib.\n\nFree slots are read on a Reduck managed browser in France. The booking and the email use your paired Chrome, so keep it open.",
         "width": 640,
         "height": 1060
       },
@@ -249,7 +249,6 @@
           "region": "eu-central-1",
           "country": "FR"
         },
-        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},
@@ -293,7 +292,6 @@
         },
         "browser": "extension",
         "deviceId": "extension",
-        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},
@@ -389,7 +387,6 @@
         },
         "browser": "extension",
         "deviceId": "extension",
-        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},
@@ -461,7 +458,6 @@
         },
         "browser": "extension",
         "deviceId": "extension",
-        "authentication": "oAuth2",
         "simplify": true
       },
       "credentials": {},

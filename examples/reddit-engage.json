@@ -238,7 +238,6 @@
 				},
 				"browser": "extension",
 				"deviceId": "extension",
-				"authentication": "oAuth2",
 				"simplify": true
 			}
 		},
@@ -454,7 +453,6 @@
 				},
 				"browser": "extension",
 				"deviceId": "extension",
-				"authentication": "oAuth2",
 				"simplify": true
 			}
 		},
@@ -877,7 +875,6 @@
 				},
 				"browser": "extension",
 				"deviceId": "extension",
-				"authentication": "oAuth2",
 				"simplify": true
 			}
 		},

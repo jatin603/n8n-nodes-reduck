@@ -2,8 +2,9 @@
 # An n8n that has never seen our workflows: an empty database and the Reduck node from npm, on
 # 127.0.0.1:5692 (the dev and the clean n8n of /init_n8n use other ports and session cookies).
 #   fresh-n8n.sh up <node version>   start it; prints the editor URL and where the login is
-#   fresh-n8n.sh import <file.json>  import a copy, with a Reduck credential set (not connected), so
-#                                    the canvas shows no warning; prints the workflow URL
+#   fresh-n8n.sh import <file.json>  import a copy, with a Reduck credential set (its key is
+#                                    $REDUCK_API_KEY, or empty), so the canvas shows no warning;
+#                                    prints the workflow URL
 #   fresh-n8n.sh down                stop it and delete its folder
 set -euo pipefail
 DIR=${FRESH_N8N_DIR:-${TMPDIR:-/tmp}/n8n-fresh}
@@ -35,8 +36,8 @@ up)
 	;;
 import)
 	[ -f "${2:-}" ] || { echo "Usage: $0 import <file.json>" >&2; exit 1; }
-	CRED=$(api /rest/credentials | python3 -c 'import json,sys;d=[c for c in json.load(sys.stdin)["data"] if c["type"]=="reduckOAuth2Api"];print(d[0]["id"] if d else "")')
-	[ -n "$CRED" ] || CRED=$(api /rest/credentials -d '{"name":"Reduck account","type":"reduckOAuth2Api","data":{}}' | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["id"])')
+	CRED=$(api /rest/credentials | python3 -c 'import json,sys;d=[c for c in json.load(sys.stdin)["data"] if c["type"]=="reduckApi"];print(d[0]["id"] if d else "")')
+	[ -n "$CRED" ] || CRED=$(api /rest/credentials -d "$(python3 -c 'import json,os;print(json.dumps({"name":"Reduck account","type":"reduckApi","data":{"apiKey":os.environ.get("REDUCK_API_KEY","")}}))')" | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["id"])')
 	ID=fresh$(python3 -c 'import hashlib,sys;print(hashlib.md5(sys.argv[1].encode()).hexdigest()[:10])' "$(basename "$2")")
 	python3 - "$2" "$DIR/import.json" "$ID" "$CRED" <<-'EOF'
 		import json, sys
@@ -44,7 +45,7 @@ import)
 		w = json.load(open(src)); w["id"] = wid; w["active"] = False
 		for n in w["nodes"]:
 		    if n["type"].endswith(".reduck"):
-		        n["credentials"] = {"reduckOAuth2Api": {"id": cred, "name": "Reduck account"}}
+		        n["credentials"] = {"reduckApi": {"id": cred, "name": "Reduck account"}}
 		json.dump([w], open(out, "w"))
 	EOF
 	# The CLI talks to the same database; its task broker needs a port the server does not hold.
