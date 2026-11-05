@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.30](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.29...0.2.30)
+
+- docs: example workflow, alert to automatic purchase [`#7`](https://github.com/reduck-ai/n8n-nodes-reduck/pull/7)
+
 #### [0.2.29](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.28...0.2.29)
+
+> 4 November 2026
 
 - fix: the links to the API keys page carry a utm [`#6`](https://github.com/reduck-ai/n8n-nodes-reduck/pull/6)
 
