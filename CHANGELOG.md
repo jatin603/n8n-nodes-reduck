@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [0.2.32](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.31...0.2.32)
+
+- feat: the credential window links to the API keys page [`133dfeb`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/133dfeb1e6b6cf792cc575da597ba037209d30e7)
+
 #### [0.2.31](https://github.com/reduck-ai/n8n-nodes-reduck/compare/0.2.30...0.2.31)
+
+> 5 November 2026
 
 - feat!: the API key is the only credential [`bb58fd7`](https://github.com/reduck-ai/n8n-nodes-reduck/commit/bb58fd7dcdae565bfaafdd649436aeac6acd662c)
 
