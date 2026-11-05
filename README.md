@@ -140,11 +140,8 @@ Import a workflow from [examples](https://github.com/reduck-ai/n8n-nodes-reduck/
 check your doctors' free slots every hour, then book the earliest one in your dates and email
 you.
 - [Alert to automatic purchase](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/alert-to-purchase.json):
-  receive a back-in-stock alert on a webhook, check the price and the stock, then order under your
-  limits, or tell you when it needs you.
-- [Shop alert and watch](https://github.com/reduck-ai/n8n-nodes-reduck/blob/main/examples/shop-alert-and-watch.json):
-  start from an alert or from a listing page read every few minutes, then add the product to your
-  cart, or tell you, when it is new or back in stock under your price limit.
+  receive a back-in-stock alert on a webhook, check the price and the stock, then order it once
+  under your limits, or tell you when it needs you.
 
 ## FAQ
 
