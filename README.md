@@ -136,9 +136,9 @@ Reduck is a verified node, so n8n Cloud can install it from the editor.
    [API keys](https://reduck.ai/api-keys?utm_source=n8n&utm_medium=readme).
 
 3. **Run a script.** In **Script**, search `ai overview` and select **Get Google AI Overview**.
-   In **query**, type a search, for example `best crm for small business`. Then select
-   **Execute step**. The script runs on your paired browser, and `result` holds the overview's
-   answer and the pages it cites:
+   In **query**, type a search, for example `best crm for small business`. If you paired more
+   than one browser, select yours in **Device**. Then select **Execute step**. The script runs on
+   your paired browser, and `result` holds the overview's answer and the pages it cites:
 
    ![The Reduck node after Execute step: the run succeeded, and result holds the overview's answer](https://raw.githubusercontent.com/reduck-ai/n8n-nodes-reduck/main/images/quick-start-run.png)
 
